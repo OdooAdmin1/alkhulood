@@ -3,7 +3,7 @@
     'name': "Purcahse Decimal Change",
     'summary': """**""",
     'description': """**""",
-    'author': "Vanshika",
+    'author': "Vks",
     'website': "http://www.yourcompany.com",
     'category': 'Uncategorized',
     'version': '14.1',
