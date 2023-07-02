@@ -23,7 +23,7 @@ class AccountMoveLine(models.Model):
 
     @api.model
     def action_reset_account(self):
-        result = self.search([('account_id', 'in', [5, 6]), ('matching_number', '!=', False)], limit=100)
+        result = self.search([('account_id', 'in', [5, 6]), ('matching_number', '!=', False)], limit=1)
         for l in result:
             l.remove_move_reconcile()
         return True
