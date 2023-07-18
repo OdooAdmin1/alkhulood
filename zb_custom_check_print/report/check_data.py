@@ -14,26 +14,27 @@ class check_data_get(models.Model):
 
     def check_data_get(self):
         '''Function for splitting check date'''
-        date_dict = {}
-        payment_date = str(date.today())
-        count = 0
-        today = payment_date.split('-')
-        for d in today:
-            if len(d) == 2:
-                count = count + 1
-                date_dict.update({count:d[0]})
-                count = count + 1
-                date_dict.update({count:d[1]})
-            elif len(d) == 4:
-                count = count + 1
-                date_dict.update({count:d[0]})
-                count = count + 1
-                date_dict.update({count:d[1]}) 
-                count = count + 1
-                date_dict.update({count:d[2]})
-                count = count + 1
-                date_dict.update({count:d[3]})
-        return date_dict
+        for rec in self:
+            date_dict = {}
+            payment_date = str(rec.date)
+            count = 0
+            today = payment_date.split('-')
+            for d in today:
+                if len(d) == 2:
+                    count = count + 1
+                    date_dict.update({count:d[0]})
+                    count = count + 1
+                    date_dict.update({count:d[1]})
+                elif len(d) == 4:
+                    count = count + 1
+                    date_dict.update({count:d[0]})
+                    count = count + 1
+                    date_dict.update({count:d[1]})
+                    count = count + 1
+                    date_dict.update({count:d[2]})
+                    count = count + 1
+                    date_dict.update({count:d[3]})
+            return date_dict
 
     def amount_to_text_wrapp(self, amt, obj):
         amt_text = []
