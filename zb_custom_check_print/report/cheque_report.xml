@@ -63,7 +63,7 @@
                                 </div>
                             </div>
                             <div class="row" style="font-size:18px; padding-top:0cm;padding-left:0.8cm">
-                                <div class="col-sm-4" style="font-size:18px;font-weight:bold;padding-left:22.5cm;">
+                                <div class="col-sm-4" style="font-size:18px;font-weight:bold;padding-left:22.5cm;position: relative; top:-5px;">
                                     <strong>*</strong><span t-esc="o._get_amount()"/><strong>*</strong>
                                 </div>
                                 <div class="col-sm-4"/>
