@@ -26,7 +26,7 @@ from odoo import models, fields, api
 
 class OrganizationalChart(models.Model):
     _name = 'hr.organizational.chart'
-    _description = "HR Organizational Chart"
+    _description = "HR Organizational Chart list"
 
     @api.model
     def get_employee_data(self, emp_id):
