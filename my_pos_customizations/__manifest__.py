@@ -1,6 +1,6 @@
 {
     'name': 'POS Report Cost Extension',
-    'version': '16.0.1.0.0',
+    'version': '19.0.1.0.0',
     'category': 'Point of Sale',
     'summary': 'Adds the Standard Price (Cost) to the POS Orders Report.',
     'depends': [
@@ -12,4 +12,6 @@
     ],
     'installable': True,
     'auto_install': False,
+    'author': 'Amwal W.L.L.',
+    'license': 'LGPL-3',
 }
