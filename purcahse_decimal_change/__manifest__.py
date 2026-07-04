@@ -8,6 +8,7 @@
     'category': 'Uncategorized',
     'version': '14.1',
     'depends': ['base', 'purchase'],
+    'license': 'LGPL-3',
     'data': [
         'views/purchase_order.xml',
     ],
