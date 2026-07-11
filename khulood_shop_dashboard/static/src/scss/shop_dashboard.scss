@@ -1,0 +1,72 @@
+.o_khulood_dashboard {
+    padding: 24px;
+    max-width: 1100px;
+
+    .o_khulood_header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-bottom: 20px;
+
+        h2 {
+            margin-bottom: 2px;
+        }
+
+        .o_khulood_header_controls {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .o_khulood_warehouse_select {
+            min-width: 200px;
+        }
+    }
+
+    .o_khulood_section {
+        background: #fff;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 16px 20px;
+        margin-bottom: 24px;
+
+        .o_khulood_section_header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 12px;
+
+            h4 {
+                margin: 0;
+            }
+        }
+
+        .o_khulood_search {
+            max-width: 240px;
+        }
+    }
+
+    .o_khulood_loading {
+        padding: 40px;
+        text-align: center;
+        color: #6c757d;
+    }
+
+    .o_khulood_clickable_row {
+        cursor: pointer;
+    }
+
+    .o_khulood_clickable_row:hover {
+        background-color: #f5f5f5;
+    }
+
+    .o_khulood_footer {
+        margin-top: 4px;
+        font-size: 12px;
+    }
+}

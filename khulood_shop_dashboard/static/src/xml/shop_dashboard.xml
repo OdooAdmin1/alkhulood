@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="khulood_shop_dashboard.ShopDashboard" owl="1">
+        <div class="o_khulood_dashboard">
+
+            <div class="o_khulood_header">
+                <div class="o_khulood_header_title">
+                    <h2>Shop Dashboard</h2>
+                    <span class="text-muted" t-if="state.warehouseName">
+                        Showing: <strong t-esc="state.warehouseName"/>
+                    </span>
+                </div>
+
+                <div class="o_khulood_header_controls">
+                    <select class="form-select o_khulood_warehouse_select"
+                            t-on-change="onWarehouseChange">
+                        <t t-foreach="state.warehouses" t-as="wh" t-key="wh.id">
+                            <option t-att-value="wh.id"
+                                    t-att-selected="wh.id === state.warehouseId">
+                                <t t-esc="wh.name"/>
+                            </option>
+                        </t>
+                    </select>
+                    <button class="btn btn-primary" t-on-click="refresh">
+                        <i class="fa fa-refresh"/> Refresh
+                    </button>
+                </div>
+            </div>
+
+            <div t-if="state.loading" class="o_khulood_loading">
+                Loading dashboard...
+            </div>
+
+            <t t-else="">
+                <!-- SECTION 1: current stock of native products -->
+                <div class="o_khulood_section">
+                    <div class="o_khulood_section_header">
+                        <h4>Native Products - Current Stock</h4>
+                        <input type="text"
+                               class="form-control o_khulood_search"
+                               placeholder="Search product..."
+                               t-on-input="onStockSearchInput"/>
+                    </div>
+
+                    <table class="table table-hover o_khulood_table">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th>Category</th>
+                                <th class="text-end">Stock on Hand</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <t t-foreach="filteredStockRows" t-as="r" t-key="r.product_id">
+                                <tr>
+                                    <td t-esc="r.name"/>
+                                    <td t-esc="r.category"/>
+                                    <td class="text-end">
+                                        <t t-esc="formatQty(r.qty_on_hand)"/> <t t-esc="r.uom"/>
+                                    </td>
+                                </tr>
+                            </t>
+                            <tr t-if="!filteredStockRows.length">
+                                <td colspan="3" class="text-center text-muted">
+                                    No native products found. Tag products with the
+                                    "Native" tag to see them here.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- SECTION 2: previous day's performance -->
+                <div class="o_khulood_section">
+                    <div class="o_khulood_section_header">
+                        <h4>Previous Day's Performance</h4>
+                        <span class="text-muted small">Click a product for details</span>
+                    </div>
+
+                    <table class="table table-hover o_khulood_table">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th class="text-end">Sold Yesterday</th>
+                                <th class="text-end">Revenue Yesterday</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <t t-foreach="state.performanceRows" t-as="r" t-key="r.product_id">
+                                <tr class="o_khulood_clickable_row"
+                                    t-on-click="() => this.openProductDetail(r.product_id)">
+                                    <td t-esc="r.name"/>
+                                    <td class="text-end">
+                                        <t t-esc="formatQty(r.qty_sold_yesterday)"/> <t t-esc="r.uom"/>
+                                    </td>
+                                    <td class="text-end">
+                                        <t t-esc="formatMoney(r.revenue_yesterday)"/>
+                                    </td>
+                                </tr>
+                            </t>
+                            <tr t-if="!state.performanceRows.length">
+                                <td colspan="3" class="text-center text-muted">
+                                    No sales recorded for native products yesterday at this shop.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="o_khulood_footer text-muted" t-if="state.generatedAt">
+                    Last updated: <t t-esc="state.generatedAt"/>
+                </div>
+            </t>
+        </div>
+    </t>
+
+    <t t-name="khulood_shop_dashboard.ProductDetailDialog" owl="1">
+        <Dialog title="state.productName || 'Product Detail'" size="'md'">
+            <div t-if="state.loading" class="o_khulood_loading">Loading...</div>
+            <t t-else="">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Order</th>
+                            <th>Time</th>
+                            <th class="text-end">Qty</th>
+                            <th class="text-end">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <t t-foreach="state.lines" t-as="l" t-key="l.order_reference + l.time">
+                            <tr>
+                                <td t-esc="l.order_reference"/>
+                                <td t-esc="l.time"/>
+                                <td class="text-end" t-esc="formatQty(l.qty)"/>
+                                <td class="text-end" t-esc="formatMoney(l.amount)"/>
+                            </tr>
+                        </t>
+                        <tr t-if="!state.lines.length">
+                            <td colspan="4" class="text-center text-muted">
+                                No sales for this product yesterday at this shop.
+                            </td>
+                        </tr>
+                    </tbody>
+                    <tfoot t-if="state.lines.length">
+                        <tr>
+                            <th>Total</th>
+                            <th/>
+                            <th class="text-end" t-esc="formatQty(state.totalQty)"/>
+                            <th class="text-end" t-esc="formatMoney(state.totalRevenue)"/>
+                        </tr>
+                    </tfoot>
+                </table>
+            </t>
+        </Dialog>
+    </t>
+
+</templates>
