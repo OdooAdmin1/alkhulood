@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="al_khulood_stock_dashboard.Dashboard" owl="1">
+        <div class="aks-dashboard">
+            <div class="aks-header">
+                <div class="aks-header-title">
+                    <h2>Branch Stock Dashboard</h2>
+                    <span class="aks-subtitle" t-if="!state.loading">
+                        <t t-esc="state.totalCount"/> products · <t t-esc="visibleBranches.length"/>/<t t-esc="state.branches.length"/> locations shown
+                    </span>
+                </div>
+
+                <div class="aks-header-actions">
+                    <div class="aks-search-wrap">
+                        <i class="fa fa-search aks-search-icon"/>
+                        <input type="text"
+                               t-ref="searchInput"
+                               class="aks-search-input"
+                               placeholder="Search product name or code..."
+                               t-on-input="onSearchInput"
+                               t-att-value="state.search"/>
+                    </div>
+
+                    <div class="aks-branch-selector">
+                        <button class="aks-branch-btn" t-on-click="toggleBranchDropdown">
+                            <i class="fa fa-code-fork"/>
+                            <t t-esc="branchSelectorLabel"/>
+                            <i class="fa fa-caret-down"/>
+                        </button>
+                        <div class="aks-branch-dropdown" t-if="state.showBranchDropdown">
+                            <div class="aks-branch-dropdown-actions">
+                                <a t-on-click="selectAllBranches">Select all</a>
+                                <a t-on-click="clearAllBranches">Clear</a>
+                            </div>
+                            <t t-foreach="state.branches" t-as="branch" t-key="branch.id">
+                                <label class="aks-branch-option">
+                                    <input type="checkbox"
+                                           t-att-checked="isBranchSelected(branch.id)"
+                                           t-on-change="() => this.toggleBranch(branch.id)"/>
+                                    <t t-esc="branch.name"/>
+                                </label>
+                            </t>
+                        </div>
+                    </div>
+
+                    <div class="aks-branch-selector">
+                        <button class="aks-branch-btn" t-on-click="toggleCategDropdown">
+                            <i class="fa fa-tags"/>
+                            <t t-esc="categSelectorLabel"/>
+                            <i class="fa fa-caret-down"/>
+                        </button>
+                        <div class="aks-branch-dropdown" t-if="state.showCategDropdown">
+                            <div class="aks-branch-dropdown-actions">
+                                <a t-on-click="selectAllCategories">Select all</a>
+                                <a t-on-click="clearAllCategories">Clear</a>
+                            </div>
+                            <t t-foreach="state.categories" t-as="categ" t-key="categ.id">
+                                <label class="aks-branch-option">
+                                    <input type="checkbox"
+                                           t-att-checked="isCategSelected(categ.id)"
+                                           t-on-change="() => this.toggleCateg(categ.id)"/>
+                                    <t t-esc="categ.name"/>
+                                </label>
+                            </t>
+                        </div>
+                    </div>
+
+                    <label class="aks-group-toggle">
+                        <input type="checkbox" t-att-checked="state.groupByCategory" t-on-change="toggleGroupByCategory"/>
+                        Group by category
+                    </label>
+
+                    <label class="aks-group-toggle aks-negative-toggle">
+                        <input type="checkbox" t-att-checked="state.negativeOnly" t-on-change="toggleNegativeOnly"/>
+                        Negative stock only
+                    </label>
+
+                    <div class="aks-asof-wrap">
+                        <DateTimeInput value="state.asOfValue" onChange.bind="onAsOfChange" type="'datetime'" placeholder="'Stock as of...'"/>
+                        <button class="aks-asof-btn aks-asof-reset" t-if="isHistorical" t-on-click="resetToLive" title="Back to live stock">
+                            <i class="fa fa-times"/>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="aks-asof-banner" t-if="isHistorical">
+                <i class="fa fa-history"/>
+                Showing stock as it stood on <t t-esc="state.appliedAsOfDisplay"/> — not live.
+            </div>
+
+            <div class="aks-loading" t-if="state.loading">
+                <i class="fa fa-circle-o-notch fa-spin"/> Loading stock data...
+            </div>
+
+            <div class="aks-table-wrap" t-if="!state.loading">
+                <table class="aks-table">
+                    <thead>
+                        <tr>
+                            <th class="aks-col-product">Product</th>
+                            <t t-foreach="visibleBranches" t-as="branch" t-key="branch.id">
+                                <th class="aks-col-branch"><t t-esc="branch.name"/></th>
+                            </t>
+                            <th class="aks-col-total">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <t t-if="!state.groupByCategory">
+                            <t t-foreach="state.products" t-as="product" t-key="product.id">
+                                <t t-call="al_khulood_stock_dashboard.ProductRow"/>
+                            </t>
+                        </t>
+                        <t t-else="">
+                            <t t-foreach="groupedProducts" t-as="group" t-key="group.categId">
+                                <tr class="aks-group-row">
+                                    <td t-att-colspan="visibleBranches.length + 2">
+                                        <t t-esc="group.categName"/>
+                                        <span class="aks-group-count">(<t t-esc="group.products.length"/>)</span>
+                                    </td>
+                                </tr>
+                                <t t-foreach="group.products" t-as="product" t-key="product.id">
+                                    <t t-call="al_khulood_stock_dashboard.ProductRow"/>
+                                </t>
+                            </t>
+                        </t>
+                    </tbody>
+                </table>
+
+                <div class="aks-empty" t-if="!state.products.length">
+                    No products found.
+                </div>
+
+                <div class="aks-load-more-wrap" t-if="hasMore">
+                    <button class="aks-load-more-btn" t-on-click="loadMore" t-att-disabled="state.loadingMore">
+                        <t t-if="state.loadingMore">Loading...</t>
+                        <t t-else="">Load more</t>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </t>
+
+    <t t-name="al_khulood_stock_dashboard.ProductRow" owl="1">
+        <tr class="aks-row">
+            <td class="aks-col-product">
+                <div class="aks-product-cell">
+                    <img t-att-src="getImageUrl(product)" class="aks-product-img" alt=""/>
+                    <div class="aks-product-info">
+                        <div class="aks-product-name"><t t-esc="product.name"/></div>
+                        <div class="aks-product-code" t-if="product.default_code">
+                            <t t-esc="product.default_code"/>
+                        </div>
+                    </div>
+                </div>
+            </td>
+            <t t-foreach="visibleBranches" t-as="branch" t-key="branch.id">
+                <td class="aks-col-branch">
+                    <span t-att-class="'aks-qty ' + qtyClass(product.branches[branch.id])">
+                        <t t-esc="product.branches[branch.id]"/>
+                    </span>
+                </td>
+            </t>
+            <td class="aks-col-total">
+                <span class="aks-qty-total"><t t-esc="product.total"/></span>
+            </td>
+        </tr>
+    </t>
+
+</templates>

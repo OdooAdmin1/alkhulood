@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="action_al_khulood_stock_dashboard" model="ir.actions.client">
+        <field name="name">Branch Stock Dashboard</field>
+        <field name="tag">al_khulood_stock_dashboard</field>
+    </record>
+
+    <menuitem id="menu_al_khulood_stock_dashboard"
+              name="Branch Stock Dashboard"
+              parent="stock.menu_stock_root"
+              action="action_al_khulood_stock_dashboard"
+              sequence="5"/>
+
+</odoo>
