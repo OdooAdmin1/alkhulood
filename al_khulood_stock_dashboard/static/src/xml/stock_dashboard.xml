@@ -17,7 +17,7 @@
                         <input type="text"
                                t-ref="searchInput"
                                class="aks-search-input"
-                               placeholder="Search product name or code..."
+                               placeholder="Search name, code, or scan barcode..."
                                t-on-input="onSearchInput"
                                t-att-value="state.search"/>
                     </div>

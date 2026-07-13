@@ -169,9 +169,19 @@ class AlKhuloodStockDashboard(models.AbstractModel):
         if categ_ids:
             product_domain = ['&'] + product_domain + [('categ_id', 'in', categ_ids)]
         if search:
-            product_domain = ['&'] + product_domain + [
-                '|', ('name', 'ilike', search), ('default_code', 'ilike', search)
-            ]
+            # Match by product name, internal reference, OR scanned barcode.
+            # Barcode lives on product.product (the variant), not
+            # product.template, so we resolve matching variants first and
+            # fold their template ids into the name/code OR-domain.
+            barcode_tmpl_ids = self.env['product.product'].search(
+                [('barcode', '=', search)]
+            ).mapped('product_tmpl_id').ids
+
+            name_code_domain = ['|', ('name', 'ilike', search), ('default_code', 'ilike', search)]
+            if barcode_tmpl_ids:
+                name_code_domain = ['|'] + name_code_domain + [('id', 'in', barcode_tmpl_ids)]
+
+            product_domain = ['&'] + product_domain + name_code_domain
 
         Product = self.env['product.template']
         order = 'categ_id, name' if group_by_category else 'name'
