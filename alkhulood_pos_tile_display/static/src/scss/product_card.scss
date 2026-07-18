@@ -1,0 +1,29 @@
+// Remove the native 2-line clamp so the full product name always shows,
+// and shrink the font slightly so longer names still fit the tile cleanly.
+.product-name {
+    -webkit-line-clamp: unset !important;
+    display: block !important;
+    overflow: visible !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere;
+    font-size: 0.75rem !important;
+    line-height: 1.2 !important;
+
+    &.no-image {
+        aspect-ratio: unset !important;
+    }
+}
+
+// Price badge shown on every tile (image or image-less)
+.alkhulood-price-badge {
+    font-size: 0.7rem;
+    z-index: 2;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+    pointer-events: none;
+}
+
+// Give the image a touch less height so the extra name lines don't push
+// tiles too tall in the grid.
+.product-img {
+    aspect-ratio: 16 / 10;
+}

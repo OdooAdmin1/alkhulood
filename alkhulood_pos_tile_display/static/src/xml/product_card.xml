@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<templates id="template" xml:space="preserve">
+
+    <t t-inherit="point_of_sale.ProductCard" t-inherit-mode="extension" owl="1">
+        <xpath expr="//article" position="inside">
+            <span class="alkhulood-price-badge position-absolute top-0 start-0 m-1 px-2 py-0 rounded-pill bg-primary text-white fw-bold">
+                <t t-esc="alkhuloodPrice"/>
+            </span>
+        </xpath>
+    </t>
+
+</templates>
