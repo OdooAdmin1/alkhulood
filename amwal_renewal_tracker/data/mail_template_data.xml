@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="mail_template_renewal_reminder" model="mail.template">
+        <field name="name">Renewal Tracker: Expiry Reminder</field>
+        <field name="model_id" ref="model_renewal_tracker"/>
+        <field name="subject">Reminder: {{ object.name }} expires in {{ object.days_remaining }} day(s)</field>
+        <field name="email_to">{{ object.responsible_id.email or '' }}</field>
+        <field name="body_html" type="html">
+            <div style="font-family: Arial, sans-serif; font-size: 14px;">
+                <p>Hello,</p>
+                <p>
+                    This is a reminder that <strong t-out="object.name"/> is due to expire on
+                    <strong t-out="object.expiry_date"/> (<strong t-out="object.days_remaining"/> day(s) remaining).
+                </p>
+                <p>
+                    Type: <strong t-out="object.renewal_type_id.name"/><br/>
+                    <t t-if="object.partner_id">Client: <strong t-out="object.partner_id.name"/><br/></t>
+                    Responsible: <strong t-out="object.responsible_id.name"/>
+                </p>
+                <p>Please take the necessary action to renew this in time.</p>
+                <p>Regards,<br/>Amwal Renewal Tracker</p>
+            </div>
+        </field>
+        <field name="auto_delete" eval="True"/>
+    </record>
+</odoo>

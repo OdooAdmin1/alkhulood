@@ -1,0 +1,4 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_renewal_tracker_user,renewal.tracker.user,model_renewal_tracker,group_renewal_user,1,1,1,1
+access_renewal_type_user,renewal.type.user,model_renewal_type,group_renewal_user,1,1,0,0
+access_renewal_type_manager,renewal.type.manager,model_renewal_type,group_renewal_manager,1,1,1,1

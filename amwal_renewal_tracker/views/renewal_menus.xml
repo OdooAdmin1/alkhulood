@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <menuitem id="menu_renewal_root" name="Renewals" sequence="60"
+              web_icon="amwal_renewal_tracker,static/description/icon.png"
+              groups="group_renewal_user"/>
+
+    <menuitem id="menu_renewal_tracker" name="Renewals" parent="menu_renewal_root"
+              action="action_renewal_tracker" sequence="10"
+              groups="group_renewal_user"/>
+
+    <menuitem id="menu_renewal_config" name="Configuration" parent="menu_renewal_root" sequence="90"
+              groups="group_renewal_manager"/>
+
+    <menuitem id="menu_renewal_type" name="Renewal Types" parent="menu_renewal_config"
+              action="action_renewal_type" sequence="10"
+              groups="group_renewal_manager"/>
+
+</odoo>

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="renewal_type_cr" model="renewal.type">
+        <field name="name">CR Renewal</field>
+        <field name="reminder_days">60,30,15,7,1</field>
+    </record>
+    <record id="renewal_type_insurance" model="renewal.type">
+        <field name="name">Insurance</field>
+        <field name="reminder_days">30,15,7,1</field>
+    </record>
+    <record id="renewal_type_certificate" model="renewal.type">
+        <field name="name">Certificate Renewal</field>
+        <field name="reminder_days">30,15,7,1</field>
+    </record>
+    <record id="renewal_type_license" model="renewal.type">
+        <field name="name">License Renewal</field>
+        <field name="reminder_days">30,15,7,1</field>
+    </record>
+</odoo>

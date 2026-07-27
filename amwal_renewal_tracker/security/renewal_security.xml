@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Dedicated category so it's easy to find on the Users form -->
+    <record id="module_category_renewal_tracker" model="ir.module.category">
+        <field name="name">Renewal Tracker</field>
+        <field name="description">Access control for the Amwal Renewal Tracker app</field>
+        <field name="sequence">50</field>
+    </record>
+
+    <!-- Odoo 19+: group categories on res.groups are expressed via res.groups.privilege -->
+    <record id="privilege_renewal_tracker" model="res.groups.privilege">
+        <field name="name">Renewal Tracker</field>
+        <field name="sequence">50</field>
+        <field name="category_id" ref="module_category_renewal_tracker"/>
+    </record>
+
+    <!-- Simple user group: only members can see/use the app -->
+    <record id="group_renewal_user" model="res.groups">
+        <field name="name">User</field>
+        <field name="privilege_id" ref="privilege_renewal_tracker"/>
+        <field name="comment">Users in this group can access the Renewal Tracker app (renewals, types, dashboard).</field>
+    </record>
+
+    <!-- Optional manager tier: can also configure renewal types -->
+    <record id="group_renewal_manager" model="res.groups">
+        <field name="name">Manager</field>
+        <field name="privilege_id" ref="privilege_renewal_tracker"/>
+        <field name="implied_ids" eval="[(4, ref('group_renewal_user'))]"/>
+        <field name="comment">Users in this group can also configure Renewal Types.</field>
+    </record>
+
+</odoo>

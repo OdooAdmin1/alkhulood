@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- List View -->
+    <record id="view_renewal_tracker_list" model="ir.ui.view">
+        <field name="name">renewal.tracker.list</field>
+        <field name="model">renewal.tracker</field>
+        <field name="arch" type="xml">
+            <list string="Renewals" decoration-danger="state == 'expired'"
+                  decoration-warning="state == 'expiring'" decoration-success="state == 'valid'">
+                <field name="name"/>
+                <field name="renewal_type_id"/>
+                <field name="partner_id"/>
+                <field name="expiry_date"/>
+                <field name="days_remaining"/>
+                <field name="state" widget="badge"
+                       decoration-danger="state == 'expired'"
+                       decoration-warning="state == 'expiring'"
+                       decoration-success="state == 'valid'"/>
+                <field name="responsible_id"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Kanban View -->
+    <record id="view_renewal_tracker_kanban" model="ir.ui.view">
+        <field name="name">renewal.tracker.kanban</field>
+        <field name="model">renewal.tracker</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="state" class="o_kanban_small_column">
+                <field name="name"/>
+                <field name="renewal_type_id"/>
+                <field name="partner_id"/>
+                <field name="expiry_date"/>
+                <field name="days_remaining"/>
+                <field name="state"/>
+                <field name="responsible_id"/>
+                <field name="color"/>
+                <templates>
+                    <t t-name="card" t-attf-class="oe_kanban_color_#{record.color.raw_value}">
+                        <div class="oe_kanban_global_click p-2">
+                            <strong><field name="name"/></strong>
+                            <div>
+                                <field name="renewal_type_id"/>
+                                <t t-if="record.partner_id.raw_value"> — <field name="partner_id"/></t>
+                            </div>
+                            <div>
+                                Expiry: <field name="expiry_date"/>
+                            </div>
+                            <div>
+                                <span t-if="record.days_remaining.raw_value &lt; 0" class="text-danger">
+                                    Expired <t t-out="Math.abs(record.days_remaining.raw_value)"/> day(s) ago
+                                </span>
+                                <span t-else="">
+                                    <field name="days_remaining"/> day(s) remaining
+                                </span>
+                            </div>
+                            <div class="text-muted">
+                                <field name="responsible_id"/>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- Calendar View -->
+    <record id="view_renewal_tracker_calendar" model="ir.ui.view">
+        <field name="name">renewal.tracker.calendar</field>
+        <field name="model">renewal.tracker</field>
+        <field name="arch" type="xml">
+            <calendar string="Renewals" date_start="expiry_date" color="state" mode="month">
+                <field name="name"/>
+                <field name="renewal_type_id"/>
+                <field name="partner_id"/>
+                <field name="state"/>
+            </calendar>
+        </field>
+    </record>
+
+    <!-- Form View -->
+    <record id="view_renewal_tracker_form" model="ir.ui.view">
+        <field name="name">renewal.tracker.form</field>
+        <field name="model">renewal.tracker</field>
+        <field name="arch" type="xml">
+            <form string="Renewal">
+                <header>
+                    <field name="state" widget="statusbar" statusbar_visible="valid,expiring,expired"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name" placeholder="e.g. CR Renewal - Al Khulood Sweets"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="renewal_type_id"/>
+                            <field name="partner_id"/>
+                            <field name="responsible_id"/>
+                        </group>
+                        <group>
+                            <field name="issue_date"/>
+                            <field name="expiry_date"/>
+                            <field name="days_remaining"/>
+                            <field name="expiring_soon_threshold"/>
+                        </group>
+                    </group>
+                    <group string="Document">
+                        <field name="document" filename="document_name"/>
+                        <field name="document_name" invisible="1"/>
+                    </group>
+                    <group string="Notes">
+                        <field name="notes" nolabel="1"/>
+                    </group>
+                    <field name="reminder_sent_days" invisible="1"/>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search View -->
+    <record id="view_renewal_tracker_search" model="ir.ui.view">
+        <field name="name">renewal.tracker.search</field>
+        <field name="model">renewal.tracker</field>
+        <field name="arch" type="xml">
+            <search string="Search Renewals">
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="renewal_type_id"/>
+                <field name="responsible_id"/>
+                <filter string="Valid" name="filter_valid" domain="[('state','=','valid')]"/>
+                <filter string="Expiring Soon" name="filter_expiring" domain="[('state','=','expiring')]"/>
+                <filter string="Expired" name="filter_expired" domain="[('state','=','expired')]"/>
+                <separator/>
+                <filter string="My Renewals" name="filter_my" domain="[('responsible_id','=',uid)]"/>
+                <group>
+                    <filter string="Status" name="group_state" context="{'group_by':'state'}"/>
+                    <filter string="Type" name="group_type" context="{'group_by':'renewal_type_id'}"/>
+                    <filter string="Client" name="group_partner" context="{'group_by':'partner_id'}"/>
+                    <filter string="Responsible" name="group_responsible" context="{'group_by':'responsible_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_renewal_tracker" model="ir.actions.act_window">
+        <field name="name">Renewals</field>
+        <field name="res_model">renewal.tracker</field>
+        <field name="view_mode">kanban,list,calendar,form</field>
+        <field name="search_view_id" ref="view_renewal_tracker_search"/>
+        <field name="context">{'search_default_group_state': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Track your first renewal (CR, certificate, insurance, license...)
+            </p>
+        </field>
+    </record>
+
+</odoo>

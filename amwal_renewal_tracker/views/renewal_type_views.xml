@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_renewal_type_list" model="ir.ui.view">
+        <field name="name">renewal.type.list</field>
+        <field name="model">renewal.type</field>
+        <field name="arch" type="xml">
+            <list string="Renewal Types" editable="bottom">
+                <field name="name"/>
+                <field name="reminder_days"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_renewal_type_form" model="ir.ui.view">
+        <field name="name">renewal.type.form</field>
+        <field name="model">renewal.type</field>
+        <field name="arch" type="xml">
+            <form string="Renewal Type">
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="reminder_days" help="Comma-separated, e.g. 30,15,7,1"/>
+                        <field name="active"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_renewal_type" model="ir.actions.act_window">
+        <field name="name">Renewal Types</field>
+        <field name="res_model">renewal.type</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+</odoo>
