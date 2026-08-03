@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="product_template_form_view_eod_inherit" model="ir.ui.view">
+        <field name="name">product.template.form.eod.dashboard.inherit</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//group[@name='inventory']" position="inside">
+                <group string="Al Khulood EOD Dashboard" name="eod_dashboard_group">
+                    <field name="eod_dashboard_tracked"/>
+                    <field name="eod_dashboard_low_stock_threshold"
+                           invisible="not eod_dashboard_tracked"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="stock_warehouse_form_view_eod_inherit" model="ir.ui.view">
+        <field name="name">stock.warehouse.form.eod.dashboard.inherit</field>
+        <field name="model">stock.warehouse</field>
+        <field name="inherit_id" ref="stock.view_warehouse"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='code']" position="after">
+                <field name="eod_dashboard_branch"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

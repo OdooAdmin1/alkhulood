@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<t t-name="al_khulood_eod_stock_dashboard.Dashboard" owl="1">
+    <div class="eod-dashboard">
+        <div class="eod-header">
+            <div class="eod-header-title">
+                <span class="eod-eyebrow">Al Khulood Sweets</span>
+                <h2>Closing Stock Dashboard</h2>
+            </div>
+            <div class="eod-header-actions" t-if="state.tab === 'closing'">
+                <span class="eod-asof-label">As of (11:55 PM)</span>
+                <input type="date" class="form-control eod-asof-input" t-model="state.asOfDate"/>
+                <button class="btn btn-primary eod-apply-btn" t-on-click="applyAsOf">Apply</button>
+                <button class="btn btn-link eod-quick-btn" t-on-click="() => this.setQuickAsOf('yesterday')">Yesterday</button>
+                <button class="btn btn-link eod-quick-btn" t-on-click="() => this.setQuickAsOf('today')">Today</button>
+            </div>
+        </div>
+
+        <div class="eod-kpis">
+            <div class="eod-kpi eod-kpi-products">
+                <i class="fa fa-cubes eod-kpi-icon"/>
+                <div class="eod-kpi-text">
+                    <span class="eod-kpi-value" t-esc="state.data.products.length"/>
+                    <span class="eod-kpi-label">Tracked Products</span>
+                </div>
+            </div>
+            <div class="eod-kpi eod-kpi-branches">
+                <i class="fa fa-shopping-bag eod-kpi-icon"/>
+                <div class="eod-kpi-text">
+                    <span class="eod-kpi-value" t-esc="state.data.stores.length"/>
+                    <span class="eod-kpi-label">Branches</span>
+                </div>
+            </div>
+            <div class="eod-kpi eod-kpi-alert" t-att-class="lowStockCount ? 'eod-kpi-alert-active' : ''">
+                <i class="fa fa-exclamation-triangle eod-kpi-icon"/>
+                <div class="eod-kpi-text">
+                    <span class="eod-kpi-value" t-esc="lowStockCount"/>
+                    <span class="eod-kpi-label">Below Threshold</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="eod-toolbar">
+            <div class="eod-tabs">
+                <button class="eod-tab" t-att-class="state.tab === 'closing' ? 'eod-tab-active' : ''"
+                        t-on-click="() => this.setTab('closing')">
+                    <i class="fa fa-moon-o me-1"/>Closing Balance
+                </button>
+                <button class="eod-tab" t-att-class="state.tab === 'live' ? 'eod-tab-active' : ''"
+                        t-on-click="() => this.setTab('live')">
+                    <i class="fa fa-bolt me-1"/>Live Now
+                </button>
+                <button class="eod-tab" t-att-class="state.tab === 'trend' ? 'eod-tab-active' : ''"
+                        t-on-click="() => this.setTab('trend')">
+                    <i class="fa fa-line-chart me-1"/>7-Day Trend
+                </button>
+            </div>
+
+            <button class="btn btn-link eod-reset-btn" t-on-click="resetFilters" t-if="activeFilterCount">
+                <i class="fa fa-refresh me-1"/>Reset Filters (<t t-esc="activeFilterCount"/>)
+            </button>
+        </div>
+
+        <div class="eod-filters">
+            <div class="eod-filter-group">
+                <span class="eod-filter-label">Branch</span>
+                <div class="eod-chip-row">
+                    <t t-foreach="state.data.stores" t-as="store" t-key="store.id">
+                        <button class="eod-chip eod-chip-store"
+                                t-att-class="state.selectedStoreIds.includes(store.id) ? 'eod-chip-active' : ''"
+                                t-on-click="() => this.toggleStore(store.id)">
+                            <t t-esc="store.name"/>
+                        </button>
+                    </t>
+                </div>
+            </div>
+            <div class="eod-filter-group" t-if="state.categories.length">
+                <span class="eod-filter-label">Category</span>
+                <div class="eod-chip-row">
+                    <t t-foreach="state.categories" t-as="cat" t-key="cat.id">
+                        <button class="eod-chip eod-chip-category"
+                                t-att-class="state.selectedCategoryIds.includes(cat.id) ? 'eod-chip-active' : ''"
+                                t-att-style="'--chip-color: ' + categoryColor(cat.id)"
+                                t-on-click="() => this.toggleCategory(cat.id)">
+                            <span class="eod-chip-dot"/>
+                            <t t-esc="cat.name"/>
+                        </button>
+                    </t>
+                </div>
+            </div>
+        </div>
+
+        <div t-if="state.tab === 'closing'" class="eod-context-note">
+            <i class="fa fa-info-circle me-1"/>
+            Reconstructed balance as of <t t-esc="state.asOfDate"/> 11:55 PM -
+            computed the same way as Inventory &gt; Reporting &gt; Stock &gt; "Inventory at Date".
+        </div>
+
+        <div t-if="state.loading" class="eod-loading">
+            <i class="fa fa-circle-o-notch fa-spin me-2"/> Loading…
+        </div>
+
+        <!-- LIVE / CLOSING GRID (share the same layout, different data source) -->
+        <div t-if="!state.loading and (state.tab === 'live' or state.tab === 'closing')" class="eod-live-panel">
+            <input type="text" class="form-control eod-search"
+                   placeholder="Search product…"
+                   t-model="state.search"/>
+
+            <div class="eod-grid-wrapper">
+                <table class="eod-grid">
+                    <thead>
+                        <tr>
+                            <th class="eod-grid-product-col">Product</th>
+                            <t t-foreach="visibleStores" t-as="store" t-key="store.id">
+                                <th><t t-esc="store.name"/></th>
+                            </t>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <t t-foreach="filteredProducts" t-as="product" t-key="product.id">
+                            <tr>
+                                <td class="eod-grid-product-col">
+                                    <span class="eod-product-categ-dot" t-att-style="'--chip-color: ' + categoryColor(product.categ_id)"/>
+                                    <t t-esc="product.name"/>
+                                </td>
+                                <t t-foreach="visibleStores" t-as="store" t-key="store.id">
+                                    <td t-att-class="'eod-cell ' + cellClass(product.id, store.id)">
+                                        <t t-esc="qtyFor(product.id, store.id)"/>
+                                    </td>
+                                </t>
+                            </tr>
+                        </t>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="eod-legend">
+                <span class="eod-legend-item"><span class="eod-legend-swatch eod-cell-zero"/> Zero stock</span>
+                <span class="eod-legend-item"><span class="eod-legend-swatch eod-cell-low"/> At/below threshold</span>
+                <span class="eod-legend-item"><span class="eod-legend-swatch eod-cell-watch"/> Watch (within 1.5x)</span>
+                <span class="eod-legend-item"><span class="eod-legend-swatch eod-cell-healthy"/> Healthy</span>
+            </div>
+        </div>
+
+        <!-- TREND VIEW -->
+        <div t-if="state.tab === 'trend'" class="eod-trend-panel">
+            <div t-if="state.trendLoading" class="eod-loading">
+                <i class="fa fa-circle-o-notch fa-spin me-2"/> Computing trend from stock history…
+            </div>
+            <t t-if="!state.trendLoading">
+                <div class="eod-trend-product-list">
+                    <t t-foreach="state.data.products" t-as="product" t-key="product.id">
+                        <button class="eod-trend-product"
+                                t-att-class="state.selectedProductId === product.id ? 'eod-trend-product-active' : ''"
+                                t-on-click="() => this.selectProduct(product.id)">
+                            <span class="eod-product-categ-dot" t-att-style="'--chip-color: ' + categoryColor(product.categ_id)"/>
+                            <t t-esc="product.name"/>
+                        </button>
+                    </t>
+                </div>
+                <div class="eod-trend-chart-wrapper">
+                    <canvas t-ref="trendChart"/>
+                </div>
+            </t>
+        </div>
+    </div>
+</t>
+
+</templates>

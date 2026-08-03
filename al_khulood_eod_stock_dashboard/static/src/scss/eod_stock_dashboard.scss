@@ -1,0 +1,445 @@
+.eod-dashboard {
+    --eod-navy: #1F3864;
+    --eod-navy-soft: #2E4E85;
+    --eod-gold: #BF9000;
+    --eod-gold-soft: #F2E3B3;
+    --eod-danger: #B3261E;
+    --eod-danger-soft: #F8D7D5;
+    --eod-zero: #7A1F1F;
+
+    padding: 20px 24px 32px;
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: #1c2430;
+    background: #FAFAF8;
+    min-height: 100%;
+}
+
+.eod-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    border-bottom: 2px solid var(--eod-navy);
+    padding-bottom: 14px;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+    gap: 12px;
+
+    &-title {
+        display: flex;
+        flex-direction: column;
+    }
+
+    h2 {
+        margin: 2px 0 0;
+        color: var(--eod-navy);
+        font-weight: 700;
+        font-size: 22px;
+    }
+
+    &-actions {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+    }
+}
+
+.eod-eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--eod-gold);
+}
+
+.eod-asof-label {
+    font-size: 12.5px;
+    color: #5b6472;
+    font-weight: 600;
+    align-self: center;
+}
+
+.eod-asof-input {
+    width: auto;
+    display: inline-block;
+    color: #1c2430;
+    background: #fff;
+    border: 1px solid #d8d4c4;
+    color-scheme: light;
+
+    &::-webkit-calendar-picker-indicator {
+        opacity: 1;
+        filter: none;
+        cursor: pointer;
+    }
+}
+
+.eod-apply-btn {
+    background: var(--eod-navy);
+    border-color: var(--eod-navy);
+
+    &:hover {
+        background: var(--eod-navy-soft);
+    }
+}
+
+.eod-quick-btn {
+    font-size: 12px;
+    padding: 4px 6px;
+    color: var(--eod-navy);
+}
+
+.eod-context-note {
+    font-size: 12px;
+    color: #6b7280;
+    background: #F5F3EA;
+    border: 1px solid #e4e1d6;
+    border-radius: 6px;
+    padding: 6px 12px;
+    margin-bottom: 12px;
+    display: inline-block;
+}
+
+.eod-kpis {
+    display: flex;
+    gap: 14px;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+}
+
+.eod-kpi {
+    background: #fff;
+    border: 1px solid #e4e1d6;
+    border-left: 4px solid var(--eod-navy);
+    border-radius: 6px;
+    padding: 12px 20px;
+    min-width: 170px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+
+    &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 10px rgba(31, 56, 100, 0.08);
+    }
+
+    &-icon {
+        font-size: 20px;
+        color: var(--eod-navy);
+        width: 26px;
+        text-align: center;
+    }
+
+    &-text {
+        display: flex;
+        flex-direction: column;
+    }
+
+    &-value {
+        font-size: 26px;
+        font-weight: 700;
+        color: var(--eod-navy);
+        line-height: 1.1;
+    }
+
+    &-label {
+        font-size: 12px;
+        color: #6b7280;
+        margin-top: 2px;
+    }
+
+    &-branches .eod-kpi-icon { color: var(--eod-gold); }
+
+    &-alert-active {
+        border-left-color: var(--eod-danger);
+
+        .eod-kpi-value, .eod-kpi-icon {
+            color: var(--eod-danger);
+        }
+    }
+}
+
+.eod-reset-btn {
+    font-size: 12.5px;
+    color: var(--eod-navy);
+    font-weight: 600;
+}
+
+.eod-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px;
+    margin-bottom: 10px;
+}
+
+.eod-filter-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.eod-filter-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 700;
+    color: #8a8f98;
+}
+
+.eod-chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.eod-chip-category {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+
+    &.eod-chip-active {
+        background: color-mix(in srgb, var(--chip-color) 18%, white);
+        border-color: var(--chip-color);
+        color: var(--chip-color);
+        font-weight: 600;
+    }
+}
+
+.eod-chip-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--chip-color);
+    display: inline-block;
+}
+
+.eod-product-categ-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--chip-color);
+    display: inline-block;
+    margin-right: 8px;
+}
+
+.eod-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.eod-tabs {
+    display: flex;
+    gap: 4px;
+    background: #EFEDE3;
+    border-radius: 8px;
+    padding: 4px;
+}
+
+.eod-tab {
+    border: none;
+    background: transparent;
+    padding: 6px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #5b6472;
+    cursor: pointer;
+
+    &-active {
+        background: var(--eod-navy);
+        color: #fff;
+    }
+}
+
+.eod-chip {
+    border: 1px solid #d8d4c4;
+    background: #fff;
+    border-radius: 999px;
+    padding: 4px 12px;
+    font-size: 12px;
+    cursor: pointer;
+    color: #414a58;
+    transition: all 0.12s ease;
+
+    &:hover {
+        border-color: var(--eod-navy);
+    }
+
+    &-active {
+        background: var(--eod-gold-soft);
+        border-color: var(--eod-gold);
+        color: #6b5300;
+        font-weight: 600;
+    }
+}
+
+.eod-loading {
+    padding: 40px;
+    text-align: center;
+    color: #6b7280;
+}
+
+.eod-search {
+    max-width: 320px;
+    margin-bottom: 10px;
+}
+
+.eod-grid-wrapper {
+    overflow: auto;
+    max-height: 60vh;
+    border: 1px solid #e4e1d6;
+    border-radius: 8px;
+    background: #fff;
+}
+
+.eod-grid {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 13px;
+
+    th, td {
+        padding: 8px 14px;
+        text-align: right;
+        white-space: nowrap;
+        border-bottom: 1px solid #eee;
+    }
+
+    th {
+        position: sticky;
+        top: 0;
+        background: var(--eod-navy);
+        color: #fff;
+        font-weight: 600;
+        z-index: 2;
+    }
+
+    .eod-grid-product-col {
+        text-align: left;
+        position: sticky;
+        left: 0;
+        background: #fff;
+        font-weight: 500;
+        z-index: 1;
+        box-shadow: 2px 0 0 #eee;
+    }
+
+    thead .eod-grid-product-col {
+        background: var(--eod-navy);
+        color: #fff;
+        z-index: 3;
+    }
+
+    tbody tr:nth-child(even) td:not(.eod-grid-product-col) {
+        background: #FAFAF8;
+    }
+
+    tbody tr:hover td:not(.eod-grid-product-col) {
+        filter: brightness(0.96);
+    }
+
+    tbody tr:hover .eod-grid-product-col {
+        background: #F5F3EA;
+    }
+}
+
+.eod-cell {
+    transition: background 0.15s ease;
+}
+
+.eod-cell-low {
+    background: var(--eod-danger-soft) !important;
+    color: var(--eod-danger);
+    font-weight: 700;
+}
+
+.eod-cell-zero {
+    background: var(--eod-zero) !important;
+    color: #fff;
+    font-weight: 700;
+}
+
+.eod-cell-watch {
+    background: #FCEFD0 !important;
+    color: #8a6500;
+    font-weight: 600;
+}
+
+.eod-cell-healthy {
+    background: #E5F3EC !important;
+    color: #276749;
+}
+
+.eod-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    padding: 10px 4px 2px;
+    font-size: 12px;
+    color: #6b7280;
+}
+
+.eod-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.eod-legend-swatch {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+    display: inline-block;
+}
+
+.eod-trend-panel {
+    display: flex;
+    gap: 16px;
+    height: 55vh;
+}
+
+.eod-trend-product-list {
+    width: 260px;
+    overflow-y: auto;
+    border: 1px solid #e4e1d6;
+    border-radius: 8px;
+    background: #fff;
+    padding: 6px;
+    flex-shrink: 0;
+}
+
+.eod-trend-product {
+    display: block;
+    width: 100%;
+    text-align: left;
+    border: none;
+    background: transparent;
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+    color: #414a58;
+
+    &:hover {
+        background: #F5F3EA;
+    }
+
+    &-active {
+        background: var(--eod-navy);
+        color: #fff;
+        font-weight: 600;
+    }
+}
+
+.eod-trend-chart-wrapper {
+    flex: 1;
+    background: #fff;
+    border: 1px solid #e4e1d6;
+    border-radius: 8px;
+    padding: 16px;
+    position: relative;
+}

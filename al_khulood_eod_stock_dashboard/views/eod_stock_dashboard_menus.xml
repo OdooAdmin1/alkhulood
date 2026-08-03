@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_al_khulood_eod_root"
+              name="EOD Stock Dashboard"
+              parent="stock.menu_stock_root"
+              sequence="5"/>
+
+    <menuitem id="menu_al_khulood_eod_dashboard"
+              name="Dashboard"
+              parent="menu_al_khulood_eod_root"
+              action="action_al_khulood_eod_dashboard"
+              sequence="1"/>
+</odoo>

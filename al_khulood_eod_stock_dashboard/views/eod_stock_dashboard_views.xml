@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- OWL dashboard, mounted as a client action -->
+    <record id="action_al_khulood_eod_dashboard" model="ir.actions.client">
+        <field name="name">EOD Stock Dashboard</field>
+        <field name="tag">al_khulood_eod_dashboard</field>
+    </record>
+</odoo>
