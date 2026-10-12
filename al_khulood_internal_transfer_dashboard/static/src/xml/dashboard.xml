@@ -1,0 +1,376 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <!-- ============ Multi select dropdown ============ -->
+    <t t-name="al_internal_transfer_dashboard.MultiSelect">
+        <div class="alit-ms" t-ref="root">
+            <button type="button" class="alit-field alit-ms-btn"
+                    t-att-class="{'is-open': state.open, 'has-value': props.selected.length}"
+                    t-on-click="toggleOpen">
+                <span class="alit-field-label" t-esc="props.label"/>
+                <span class="alit-ms-summary" t-esc="summary"/>
+                <i class="fa fa-angle-down alit-ms-caret"/>
+            </button>
+            <div class="alit-ms-menu" t-if="state.open">
+                <input type="text" class="alit-ms-search" placeholder="Search…" t-model="state.query"/>
+                <div class="alit-ms-actions">
+                    <button type="button" class="alit-link" t-on-click="selectVisible">Select shown</button>
+                    <button type="button" class="alit-link" t-on-click="clear">Clear</button>
+                </div>
+                <div class="alit-ms-list">
+                    <t t-foreach="filtered" t-as="opt" t-key="opt.id">
+                        <label class="alit-ms-opt">
+                            <input type="checkbox" t-att-checked="isSelected(opt.id)"
+                                   t-on-change="() => this.toggle(opt.id)"/>
+                            <span class="alit-ms-opt-label" t-esc="opt.label"/>
+                        </label>
+                    </t>
+                    <div class="alit-ms-empty" t-if="!filtered.length">No match</div>
+                </div>
+            </div>
+        </div>
+    </t>
+
+    <!-- ============ Dashboard ============ -->
+    <t t-name="al_internal_transfer_dashboard.Dashboard">
+        <div class="alit-root">
+            <div class="alit-page">
+
+                <!-- Header -->
+                <div class="alit-header">
+                    <div>
+                        <h1 class="alit-title">Internal Transfers</h1>
+                        <p class="alit-subtitle">
+                            Stock moved between warehouses &#183; no vendor receipts, customer deliveries or adjustments
+                        </p>
+                    </div>
+                    <div class="alit-header-actions">
+                        <button type="button" class="alit-btn alit-btn-ghost" t-on-click="resetFilters">
+                            <i class="fa fa-undo"/> Reset
+                        </button>
+                        <button type="button" class="alit-btn alit-btn-primary" t-on-click="exportXlsx"
+                                t-att-disabled="state.exporting or !state.ready">
+                            <i t-att-class="state.exporting ? 'fa fa-spinner fa-spin' : 'fa fa-file-excel-o'"/>
+                            <t t-esc="state.exporting ? 'Preparing…' : 'Export Excel'"/>
+                        </button>
+                    </div>
+                </div>
+
+                <t t-if="state.ready">
+                    <!-- Filters -->
+                    <div class="alit-filters">
+                        <div class="alit-presets">
+                            <button type="button" t-att-class="'alit-chip' + (state.preset === '7d' ? ' active' : '')"
+                                    t-on-click="() => this.applyPreset('7d')">7 days</button>
+                            <button type="button" t-att-class="'alit-chip' + (state.preset === '30d' ? ' active' : '')"
+                                    t-on-click="() => this.applyPreset('30d')">30 days</button>
+                            <button type="button" t-att-class="'alit-chip' + (state.preset === 'month' ? ' active' : '')"
+                                    t-on-click="() => this.applyPreset('month')">This month</button>
+                            <button type="button" t-att-class="'alit-chip' + (state.preset === 'last_month' ? ' active' : '')"
+                                    t-on-click="() => this.applyPreset('last_month')">Last month</button>
+                            <button type="button" t-att-class="'alit-chip' + (state.preset === 'ytd' ? ' active' : '')"
+                                    t-on-click="() => this.applyPreset('ytd')">Year to date</button>
+                        </div>
+                        <div class="alit-filter-row">
+                            <label class="alit-field alit-date">
+                                <span class="alit-field-label">From date</span>
+                                <input type="date" t-att-value="state.filters.date_from"
+                                       t-on-change="(ev) => this.onDate('date_from', ev.target.value)"/>
+                            </label>
+                            <label class="alit-field alit-date">
+                                <span class="alit-field-label">To date</span>
+                                <input type="date" t-att-value="state.filters.date_to"
+                                       t-on-change="(ev) => this.onDate('date_to', ev.target.value)"/>
+                            </label>
+                            <MultiSelect label="'Sent from'" options="warehouseOptions"
+                                         selected="state.filters.src_ids" allLabel="'All warehouses'"
+                                         onChange="(ids) => this.onSelect('src_ids', ids)"/>
+                            <MultiSelect label="'Received by'" options="warehouseOptions"
+                                         selected="state.filters.dst_ids" allLabel="'All warehouses'"
+                                         onChange="(ids) => this.onSelect('dst_ids', ids)"/>
+                            <MultiSelect label="'Category'" options="categoryOptions"
+                                         selected="state.filters.categ_ids" allLabel="'All categories'"
+                                         onChange="(ids) => this.onSelect('categ_ids', ids)"/>
+                            <label class="alit-field alit-search">
+                                <span class="alit-field-label">Product / reference</span>
+                                <input type="text" placeholder="Search…" t-att-value="state.filters.search"
+                                       t-on-input="onSearchInput"/>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="alit-alert alit-alert-error" t-if="state.error">
+                        <i class="fa fa-exclamation-triangle"/> <t t-esc="state.error"/>
+                    </div>
+
+                    <t t-if="state.data and state.derived">
+                        <div t-att-class="'alit-body' + (state.loading ? ' is-loading' : '')">
+
+                            <!-- Data health notes -->
+                            <div class="alit-alert alit-alert-info">
+                                <i class="fa fa-info-circle"/>
+                                Value = quantity moved &#215; the product's <b>current</b> cost
+                                (<t t-esc="options.currency.name"/>), not the cost on the transfer date.
+                            </div>
+                            <div class="alit-alert alit-alert-warn" t-if="state.data.kpis.uom_mismatch">
+                                <i class="fa fa-exclamation-triangle"/>
+                                <t t-esc="fmtInt(state.data.kpis.uom_mismatch)"/> move line(s) use a unit of measure different
+                                from the product's own unit. Their value may be inaccurate.
+                            </div>
+                            <div class="alit-alert alit-alert-warn" t-if="state.data.kpis.zero_cost">
+                                <i class="fa fa-exclamation-triangle"/>
+                                <t t-esc="fmtInt(state.data.kpis.zero_cost)"/> move line(s) are for products with a zero cost,
+                                so they add quantity but no value.
+                            </div>
+
+                            <!-- KPI cards -->
+                            <div class="alit-kpis">
+                                <div class="alit-card alit-kpi alit-kpi-accent">
+                                    <div class="alit-kpi-label">Total value transferred</div>
+                                    <div class="alit-kpi-value">
+                                        <span class="alit-kpi-cur" t-esc="currencySymbol"/>
+                                        <t t-esc="fmtMoney(state.data.kpis.total_value)"/>
+                                    </div>
+                                    <div class="alit-kpi-foot">
+                                        <t t-esc="state.filters.date_from"/> → <t t-esc="state.filters.date_to"/>
+                                    </div>
+                                </div>
+                                <div class="alit-card alit-kpi">
+                                    <div class="alit-kpi-label">Transfers</div>
+                                    <div class="alit-kpi-value" t-esc="fmtInt(state.data.kpis.transfers)"/>
+                                    <div class="alit-kpi-foot">
+                                        <t t-esc="fmtInt(state.data.kpis.lines)"/> product lines
+                                    </div>
+                                </div>
+                                <div class="alit-card alit-kpi">
+                                    <div class="alit-kpi-label">Products moved</div>
+                                    <div class="alit-kpi-value" t-esc="fmtInt(state.data.kpis.products)"/>
+                                    <div class="alit-kpi-foot">distinct products</div>
+                                </div>
+                                <div class="alit-card alit-kpi">
+                                    <div class="alit-kpi-label">Top route</div>
+                                    <t t-if="state.derived.topRoute">
+                                        <div class="alit-kpi-value alit-kpi-text">
+                                            <t t-esc="whCode(state.derived.topRoute.src_id)"/> → <t t-esc="whCode(state.derived.topRoute.dst_id)"/>
+                                        </div>
+                                        <div class="alit-kpi-foot">
+                                            <t t-esc="currencySymbol"/> <t t-esc="fmtMoney(state.derived.topRoute.value)"/>
+                                        </div>
+                                    </t>
+                                    <t t-else="">
+                                        <div class="alit-kpi-value alit-kpi-text">—</div>
+                                    </t>
+                                </div>
+                                <div class="alit-card alit-kpi">
+                                    <div class="alit-kpi-label">Top product</div>
+                                    <t t-if="state.derived.topProduct">
+                                        <div class="alit-kpi-value alit-kpi-text alit-clamp" t-att-title="state.derived.topProduct.name"
+                                             t-esc="state.derived.topProduct.name"/>
+                                        <div class="alit-kpi-foot">
+                                            <t t-esc="currencySymbol"/> <t t-esc="fmtMoney(state.derived.topProduct.value)"/>
+                                        </div>
+                                    </t>
+                                    <t t-else="">
+                                        <div class="alit-kpi-value alit-kpi-text">—</div>
+                                    </t>
+                                </div>
+                            </div>
+
+                            <t t-if="!state.data.kpis.lines">
+                                <div class="alit-card alit-empty">
+                                    <i class="fa fa-exchange"/>
+                                    <h3>No transfers match these filters</h3>
+                                    <p>Try a wider date range or clear the warehouse filters.</p>
+                                </div>
+                            </t>
+                            <t t-else="">
+
+                                <!-- Trend + routes -->
+                                <div class="alit-grid-2">
+                                    <div class="alit-card">
+                                        <div class="alit-card-head">
+                                            <h3>Value over time</h3>
+                                            <div class="alit-seg">
+                                                <button type="button" t-att-class="state.data.grain === 'day' ? 'active' : ''"
+                                                        t-on-click="() => this.setGrain('day')">Day</button>
+                                                <button type="button" t-att-class="state.data.grain === 'week' ? 'active' : ''"
+                                                        t-on-click="() => this.setGrain('week')">Week</button>
+                                                <button type="button" t-att-class="state.data.grain === 'month' ? 'active' : ''"
+                                                        t-on-click="() => this.setGrain('month')">Month</button>
+                                            </div>
+                                        </div>
+                                        <svg class="alit-trend" t-att-viewBox="'0 0 ' + state.derived.trend.W + ' ' + state.derived.trend.H"
+                                             preserveAspectRatio="xMidYMid meet" role="img" aria-label="Transferred value over time">
+                                            <t t-foreach="state.derived.trend.ticks" t-as="tick" t-key="tick_index">
+                                                <line class="alit-grid" t-att-x1="state.derived.trend.padL" t-att-x2="tick.x2"
+                                                      t-att-y1="tick.y" t-att-y2="tick.y"/>
+                                                <text class="alit-axis" t-att-x="state.derived.trend.padL - 8" t-att-y="tick.y + 4"
+                                                      text-anchor="end" t-esc="tick.label"/>
+                                            </t>
+                                            <t t-foreach="state.derived.trend.bars" t-as="bar" t-key="bar_index">
+                                                <rect class="alit-bar" t-att-x="bar.x" t-att-y="bar.y" t-att-width="bar.w"
+                                                      t-att-height="bar.h" rx="3">
+                                                    <title t-esc="bar.title"/>
+                                                </rect>
+                                                <text t-if="bar.showLabel" class="alit-axis" t-att-x="bar.cx"
+                                                      t-att-y="state.derived.trend.baseY + 18" text-anchor="middle" t-esc="bar.label"/>
+                                            </t>
+                                        </svg>
+                                    </div>
+
+                                    <div class="alit-card">
+                                        <div class="alit-card-head">
+                                            <h3>Top routes by value</h3>
+                                            <span class="alit-hint">click to focus</span>
+                                        </div>
+                                        <div class="alit-bars">
+                                            <t t-foreach="state.derived.routeBars" t-as="rb" t-key="rb.key">
+                                                <button type="button" class="alit-barrow" t-att-title="rb.title"
+                                                        t-on-click="() => this.focusRoute(rb.src, rb.dst)">
+                                                    <span class="alit-barrow-label" t-esc="rb.label"/>
+                                                    <span class="alit-barrow-track">
+                                                        <span class="alit-barrow-fill" t-att-style="'width:' + rb.pct + '%'"/>
+                                                    </span>
+                                                    <span class="alit-barrow-value" t-esc="fmtMoney(rb.value)"/>
+                                                </button>
+                                            </t>
+                                        </div>
+                                        <div class="alit-card-foot" t-if="hasRouteFocus">
+                                            <button type="button" class="alit-link" t-on-click="() => this.onSelect('dst_ids', [])">
+                                                Showing one route only &#183; clear the “Received by” filter
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Heatmap + top products -->
+                                <div class="alit-grid-2 alit-grid-wide-left">
+                                    <div class="alit-card">
+                                        <div class="alit-card-head">
+                                            <h3>Route matrix (<t t-esc="currencySymbol"/>)</h3>
+                                            <span class="alit-hint">rows send &#183; columns receive</span>
+                                        </div>
+                                        <div class="alit-matrix-wrap">
+                                            <table class="alit-matrix">
+                                                <thead>
+                                                    <tr>
+                                                        <th class="alit-corner">From ↓ / To →</th>
+                                                        <t t-foreach="state.derived.matrix.cols" t-as="col" t-key="col.id">
+                                                            <th t-att-title="col.name" t-esc="col.code"/>
+                                                        </t>
+                                                        <th class="alit-total">Total sent</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <t t-foreach="state.derived.matrix.rows" t-as="row" t-key="row.id">
+                                                        <tr>
+                                                            <th class="alit-rowhead" t-att-title="row.name" t-esc="row.code"/>
+                                                            <t t-foreach="row.cells" t-as="cell" t-key="cell.dst">
+                                                                <td t-att-style="cell.style"
+                                                                    t-att-class="(cell.value ? 'alit-cell' : 'alit-cell-empty') + (cell.dark ? ' dark' : '')"
+                                                                    t-att-title="whName(row.id) + ' → ' + whName(cell.dst) + ' · ' + cell.transfers + ' transfers'"
+                                                                    t-on-click="() => this.onCell(row.id, cell)">
+                                                                    <t t-if="cell.value" t-esc="fmtShort(cell.value)"/>
+                                                                </td>
+                                                            </t>
+                                                            <td class="alit-total" t-esc="fmtMoney(row.total)"/>
+                                                        </tr>
+                                                    </t>
+                                                </tbody>
+                                                <tfoot>
+                                                    <tr>
+                                                        <th class="alit-rowhead">Total received</th>
+                                                        <t t-foreach="state.derived.matrix.cols" t-as="col" t-key="col.id">
+                                                            <td class="alit-total" t-esc="fmtShort(col.total)"/>
+                                                        </t>
+                                                        <td class="alit-total"/>
+                                                    </tr>
+                                                </tfoot>
+                                            </table>
+                                        </div>
+                                    </div>
+
+                                    <div class="alit-card">
+                                        <div class="alit-card-head">
+                                            <h3>Top products by value</h3>
+                                        </div>
+                                        <div class="alit-bars">
+                                            <t t-foreach="state.derived.productBars" t-as="pb" t-key="pb.product_id">
+                                                <div class="alit-barrow alit-barrow-static" t-att-title="pb.name">
+                                                    <span class="alit-barrow-label alit-barrow-label-wide" t-esc="pb.name"/>
+                                                    <span class="alit-barrow-track">
+                                                        <span class="alit-barrow-fill alt" t-att-style="'width:' + pb.pct + '%'"/>
+                                                    </span>
+                                                    <span class="alit-barrow-value" t-esc="fmtMoney(pb.value)"/>
+                                                </div>
+                                            </t>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Detail table -->
+                                <div class="alit-card">
+                                    <div class="alit-card-head">
+                                        <h3>Products by route</h3>
+                                        <div class="alit-table-tools">
+                                            <span class="alit-hint" t-esc="pageInfo"/>
+                                            <select class="alit-select" t-on-change="onLimit">
+                                                <option value="25" t-att-selected="state.limit === 25">25 / page</option>
+                                                <option value="50" t-att-selected="state.limit === 50">50 / page</option>
+                                                <option value="100" t-att-selected="state.limit === 100">100 / page</option>
+                                            </select>
+                                            <button type="button" class="alit-icon-btn" t-att-disabled="!canPrev" t-on-click="prevPage">
+                                                <i class="fa fa-chevron-left"/>
+                                            </button>
+                                            <button type="button" class="alit-icon-btn" t-att-disabled="!canNext" t-on-click="nextPage">
+                                                <i class="fa fa-chevron-right"/>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="alit-table-wrap">
+                                        <table class="alit-table">
+                                            <thead>
+                                                <tr>
+                                                    <th class="sortable" t-on-click="() => this.sortBy('product')">Product <i t-att-class="sortIcon('product')"/></th>
+                                                    <th class="sortable" t-on-click="() => this.sortBy('category')">Category <i t-att-class="sortIcon('category')"/></th>
+                                                    <th class="sortable" t-on-click="() => this.sortBy('from')">From <i t-att-class="sortIcon('from')"/></th>
+                                                    <th class="sortable" t-on-click="() => this.sortBy('to')">To <i t-att-class="sortIcon('to')"/></th>
+                                                    <th class="num sortable" t-on-click="() => this.sortBy('qty')">Quantity <i t-att-class="sortIcon('qty')"/></th>
+                                                    <th class="num sortable" t-on-click="() => this.sortBy('unit_cost')">Unit cost <i t-att-class="sortIcon('unit_cost')"/></th>
+                                                    <th class="num sortable" t-on-click="() => this.sortBy('transfers')">Transfers <i t-att-class="sortIcon('transfers')"/></th>
+                                                    <th class="num sortable" t-on-click="() => this.sortBy('value')">Value <i t-att-class="sortIcon('value')"/></th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <t t-foreach="state.data.detail.rows" t-as="row" t-key="row_index">
+                                                    <tr>
+                                                        <td>
+                                                            <div class="alit-prod" t-esc="row.product"/>
+                                                            <div class="alit-prod-code" t-if="row.code" t-esc="row.code"/>
+                                                        </td>
+                                                        <td class="alit-muted" t-esc="row.category"/>
+                                                        <td><span class="alit-pill" t-att-title="whName(row.src_id)" t-esc="row.src_code"/></td>
+                                                        <td><span class="alit-pill alt" t-att-title="whName(row.dst_id)" t-esc="row.dst_code"/></td>
+                                                        <td class="num">
+                                                            <t t-esc="fmtQty(row.qty)"/> <span class="alit-muted" t-esc="row.uom"/>
+                                                        </td>
+                                                        <td class="num alit-muted" t-esc="fmtMoney(row.unit_cost)"/>
+                                                        <td class="num" t-esc="fmtInt(row.transfers)"/>
+                                                        <td class="num alit-strong" t-esc="fmtMoney(row.value)"/>
+                                                    </tr>
+                                                </t>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </t>
+                        </div>
+                    </t>
+                </t>
+                <t t-else="">
+                    <div class="alit-card alit-empty"><i class="fa fa-spinner fa-spin"/> <h3>Loading…</h3></div>
+                </t>
+            </div>
+        </div>
+    </t>
+</templates>

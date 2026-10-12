@@ -1,0 +1,689 @@
+// Al Khulood - Internal Transfers dashboard
+// Everything is scoped under .alit-root so nothing leaks into the rest of Odoo.
+
+.alit-root {
+    --alit-bg: #f4f5fa;
+    --alit-card: #ffffff;
+    --alit-ink: #1b2236;
+    --alit-muted: #6b7280;
+    --alit-line: #e6e8f0;
+    --alit-accent: #4338ca;
+    --alit-accent-soft: #eef0ff;
+    --alit-accent-2: #0d9488;
+    --alit-warn-bg: #fff7ed;
+    --alit-warn-ink: #9a3412;
+    --alit-info-bg: #eff6ff;
+    --alit-info-ink: #1e40af;
+    --alit-err-bg: #fef2f2;
+    --alit-err-ink: #991b1b;
+    --alit-radius: 14px;
+
+    height: 100%;
+    overflow-y: auto;
+    background: var(--alit-bg);
+    color: var(--alit-ink);
+    font-size: 13px;
+
+    .alit-page {
+        max-width: 1500px;
+        margin: 0 auto;
+        padding: 20px 24px 40px;
+    }
+
+    // ---- header ----
+    .alit-header {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 16px;
+        flex-wrap: wrap;
+    }
+    .alit-title {
+        margin: 0;
+        font-size: 26px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+    }
+    .alit-subtitle {
+        margin: 2px 0 0;
+        color: var(--alit-muted);
+    }
+    .alit-header-actions {
+        display: flex;
+        gap: 8px;
+    }
+
+    // ---- buttons ----
+    .alit-btn {
+        border: 1px solid transparent;
+        border-radius: 10px;
+        padding: 8px 14px;
+        font-weight: 600;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: transform 0.08s ease, box-shadow 0.15s ease, background 0.15s ease;
+
+        &:disabled {
+            opacity: 0.6;
+            cursor: default;
+        }
+        &:not(:disabled):active {
+            transform: translateY(1px);
+        }
+    }
+    .alit-btn-primary {
+        background: var(--alit-accent);
+        color: #fff;
+        box-shadow: 0 4px 14px rgba(67, 56, 202, 0.28);
+
+        &:not(:disabled):hover {
+            background: #3730a3;
+        }
+    }
+    .alit-btn-ghost {
+        background: var(--alit-card);
+        color: var(--alit-ink);
+        border-color: var(--alit-line);
+
+        &:hover {
+            background: #f9fafb;
+        }
+    }
+    .alit-link {
+        background: none;
+        border: 0;
+        padding: 0;
+        color: var(--alit-accent);
+        font-weight: 600;
+        cursor: pointer;
+
+        &:hover {
+            text-decoration: underline;
+        }
+    }
+    .alit-icon-btn {
+        border: 1px solid var(--alit-line);
+        background: var(--alit-card);
+        border-radius: 8px;
+        width: 30px;
+        height: 30px;
+        cursor: pointer;
+
+        &:disabled {
+            opacity: 0.4;
+            cursor: default;
+        }
+        &:not(:disabled):hover {
+            background: var(--alit-accent-soft);
+        }
+    }
+
+    // ---- filters ----
+    .alit-filters {
+        background: var(--alit-card);
+        border: 1px solid var(--alit-line);
+        border-radius: var(--alit-radius);
+        padding: 14px 16px;
+        margin-bottom: 14px;
+        box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+    }
+    .alit-presets {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        margin-bottom: 12px;
+    }
+    .alit-chip {
+        border: 1px solid var(--alit-line);
+        background: #fff;
+        color: var(--alit-muted);
+        border-radius: 999px;
+        padding: 4px 12px;
+        font-weight: 600;
+        cursor: pointer;
+
+        &:hover {
+            color: var(--alit-accent);
+            border-color: var(--alit-accent);
+        }
+        &.active {
+            background: var(--alit-accent);
+            border-color: var(--alit-accent);
+            color: #fff;
+        }
+    }
+    .alit-filter-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+        gap: 10px;
+    }
+    .alit-field {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        background: #fff;
+        border: 1px solid var(--alit-line);
+        border-radius: 10px;
+        padding: 6px 10px;
+        text-align: left;
+        min-height: 52px;
+        justify-content: center;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+        &:focus-within,
+        &.is-open {
+            border-color: var(--alit-accent);
+            box-shadow: 0 0 0 3px rgba(67, 56, 202, 0.12);
+        }
+        input {
+            border: 0;
+            outline: 0;
+            background: transparent;
+            font-size: 13px;
+            font-weight: 600;
+            padding: 0;
+            color: var(--alit-ink);
+            width: 100%;
+        }
+    }
+    .alit-field-label {
+        font-size: 10.5px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--alit-muted);
+        font-weight: 700;
+    }
+
+    // ---- multi select ----
+    .alit-ms {
+        position: relative;
+    }
+    .alit-ms-btn {
+        width: 100%;
+        cursor: pointer;
+        position: relative;
+        padding-right: 26px;
+
+        &.has-value .alit-ms-summary {
+            color: var(--alit-accent);
+        }
+    }
+    .alit-ms-summary {
+        font-weight: 600;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .alit-ms-caret {
+        position: absolute;
+        right: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--alit-muted);
+    }
+    .alit-ms-menu {
+        position: absolute;
+        z-index: 30;
+        top: calc(100% + 6px);
+        left: 0;
+        min-width: 100%;
+        width: max-content;
+        max-width: 340px;
+        background: #fff;
+        border: 1px solid var(--alit-line);
+        border-radius: 12px;
+        box-shadow: 0 12px 32px rgba(16, 24, 40, 0.16);
+        padding: 8px;
+    }
+    .alit-ms-search {
+        width: 100%;
+        border: 1px solid var(--alit-line);
+        border-radius: 8px;
+        padding: 6px 8px;
+        outline: 0;
+
+        &:focus {
+            border-color: var(--alit-accent);
+        }
+    }
+    .alit-ms-actions {
+        display: flex;
+        justify-content: space-between;
+        padding: 6px 2px;
+    }
+    .alit-ms-list {
+        max-height: 260px;
+        overflow-y: auto;
+    }
+    .alit-ms-opt {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 5px 6px;
+        border-radius: 6px;
+        cursor: pointer;
+        margin: 0;
+
+        &:hover {
+            background: var(--alit-accent-soft);
+        }
+    }
+    .alit-ms-empty {
+        padding: 8px;
+        color: var(--alit-muted);
+    }
+
+    // ---- alerts ----
+    .alit-alert {
+        border-radius: 10px;
+        padding: 8px 12px;
+        margin-bottom: 8px;
+        display: flex;
+        gap: 8px;
+        align-items: flex-start;
+    }
+    .alit-alert-info {
+        background: var(--alit-info-bg);
+        color: var(--alit-info-ink);
+    }
+    .alit-alert-warn {
+        background: var(--alit-warn-bg);
+        color: var(--alit-warn-ink);
+    }
+    .alit-alert-error {
+        background: var(--alit-err-bg);
+        color: var(--alit-err-ink);
+    }
+
+    // ---- body / loading ----
+    .alit-body {
+        transition: opacity 0.15s ease;
+
+        &.is-loading {
+            opacity: 0.55;
+            pointer-events: none;
+        }
+    }
+
+    // ---- cards ----
+    .alit-card {
+        background: var(--alit-card);
+        border: 1px solid var(--alit-line);
+        border-radius: var(--alit-radius);
+        padding: 16px;
+        box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+        min-width: 0;
+    }
+    .alit-card-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 12px;
+        flex-wrap: wrap;
+
+        h3 {
+            margin: 0;
+            font-size: 15px;
+            font-weight: 700;
+        }
+    }
+    .alit-card-foot {
+        margin-top: 10px;
+    }
+    .alit-hint {
+        color: var(--alit-muted);
+        font-size: 12px;
+    }
+    .alit-empty {
+        text-align: center;
+        padding: 48px 16px;
+        color: var(--alit-muted);
+
+        i {
+            font-size: 30px;
+            margin-bottom: 10px;
+            color: var(--alit-accent);
+        }
+        h3 {
+            margin: 0 0 4px;
+            color: var(--alit-ink);
+        }
+    }
+
+    // ---- KPIs ----
+    .alit-kpis {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+        gap: 12px;
+        margin: 12px 0;
+    }
+    .alit-kpi {
+        padding: 14px 16px;
+    }
+    .alit-kpi-accent {
+        background: linear-gradient(135deg, #4338ca 0%, #6366f1 100%);
+        border-color: transparent;
+        color: #fff;
+
+        .alit-kpi-label,
+        .alit-kpi-foot {
+            color: rgba(255, 255, 255, 0.78);
+        }
+    }
+    .alit-kpi-label {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        font-weight: 700;
+        color: var(--alit-muted);
+    }
+    .alit-kpi-value {
+        font-size: 26px;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        margin: 4px 0 2px;
+        font-variant-numeric: tabular-nums;
+    }
+    .alit-kpi-text {
+        font-size: 20px;
+    }
+    .alit-kpi-cur {
+        font-size: 13px;
+        font-weight: 700;
+        opacity: 0.8;
+        margin-right: 2px;
+    }
+    .alit-kpi-foot {
+        color: var(--alit-muted);
+        font-size: 12px;
+    }
+    .alit-clamp {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        line-height: 1.25;
+        font-size: 16px;
+    }
+
+    // ---- grids ----
+    .alit-grid-2 {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+        margin-bottom: 12px;
+    }
+    .alit-grid-wide-left {
+        grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+    }
+    @media (max-width: 1100px) {
+        .alit-grid-2,
+        .alit-grid-wide-left {
+            grid-template-columns: minmax(0, 1fr);
+        }
+    }
+
+    // ---- segmented control ----
+    .alit-seg {
+        display: inline-flex;
+        background: #f1f2f8;
+        border-radius: 9px;
+        padding: 2px;
+
+        button {
+            border: 0;
+            background: transparent;
+            padding: 3px 11px;
+            border-radius: 7px;
+            font-weight: 600;
+            color: var(--alit-muted);
+            cursor: pointer;
+
+            &.active {
+                background: #fff;
+                color: var(--alit-accent);
+                box-shadow: 0 1px 3px rgba(16, 24, 40, 0.12);
+            }
+        }
+    }
+
+    // ---- trend chart ----
+    .alit-trend {
+        width: 100%;
+        height: auto;
+        display: block;
+    }
+    .alit-grid {
+        stroke: var(--alit-line);
+        stroke-width: 1;
+    }
+    .alit-axis {
+        fill: var(--alit-muted);
+        font-size: 10.5px;
+    }
+    .alit-bar {
+        fill: var(--alit-accent);
+        opacity: 0.88;
+        transition: opacity 0.12s ease;
+
+        &:hover {
+            opacity: 1;
+        }
+    }
+
+    // ---- horizontal bars ----
+    .alit-bars {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+    .alit-barrow {
+        display: grid;
+        grid-template-columns: 78px minmax(0, 1fr) 92px;
+        align-items: center;
+        gap: 10px;
+        border: 0;
+        background: transparent;
+        padding: 4px 6px;
+        border-radius: 8px;
+        text-align: left;
+        width: 100%;
+        cursor: pointer;
+
+        &:hover {
+            background: var(--alit-accent-soft);
+        }
+        &.alit-barrow-static {
+            cursor: default;
+            grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) 84px;
+
+            &:hover {
+                background: transparent;
+            }
+        }
+    }
+    .alit-barrow-label {
+        font-weight: 700;
+        white-space: nowrap;
+    }
+    .alit-barrow-label-wide {
+        font-weight: 600;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .alit-barrow-track {
+        height: 10px;
+        background: #eef0f6;
+        border-radius: 99px;
+        overflow: hidden;
+    }
+    .alit-barrow-fill {
+        display: block;
+        height: 100%;
+        border-radius: 99px;
+        background: linear-gradient(90deg, #4338ca, #818cf8);
+
+        &.alt {
+            background: linear-gradient(90deg, #0d9488, #5eead4);
+        }
+    }
+    .alit-barrow-value {
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+        font-weight: 700;
+    }
+
+    // ---- matrix ----
+    .alit-matrix-wrap {
+        overflow: auto;
+        max-height: 520px;
+    }
+    .alit-matrix {
+        border-collapse: separate;
+        border-spacing: 3px;
+        width: 100%;
+        font-variant-numeric: tabular-nums;
+
+        th,
+        td {
+            text-align: center;
+            padding: 6px 8px;
+            border-radius: 6px;
+            white-space: nowrap;
+        }
+        thead th {
+            position: sticky;
+            top: 0;
+            background: #fff;
+            font-size: 11px;
+            color: var(--alit-muted);
+            z-index: 2;
+        }
+        .alit-corner {
+            text-align: left;
+            left: 0;
+            z-index: 3;
+        }
+        .alit-rowhead {
+            text-align: left;
+            font-weight: 700;
+            position: sticky;
+            left: 0;
+            background: #fff;
+            z-index: 1;
+        }
+        .alit-cell {
+            cursor: pointer;
+            font-weight: 600;
+            transition: transform 0.08s ease;
+
+            &:hover {
+                transform: scale(1.06);
+                outline: 2px solid var(--alit-accent);
+            }
+            &.dark {
+                color: #fff;
+            }
+        }
+        .alit-cell-empty {
+            background: #f8f9fc;
+        }
+        .alit-total {
+            font-weight: 700;
+            color: var(--alit-ink);
+            background: #f1f2f8;
+        }
+        tfoot th,
+        tfoot td {
+            position: sticky;
+            bottom: 0;
+        }
+    }
+
+    // ---- table ----
+    .alit-table-tools {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .alit-select {
+        border: 1px solid var(--alit-line);
+        border-radius: 8px;
+        padding: 4px 8px;
+        background: #fff;
+    }
+    .alit-table-wrap {
+        overflow-x: auto;
+    }
+    .alit-table {
+        width: 100%;
+        border-collapse: collapse;
+
+        th {
+            text-align: left;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--alit-muted);
+            padding: 8px 10px;
+            border-bottom: 1px solid var(--alit-line);
+            white-space: nowrap;
+
+            &.sortable {
+                cursor: pointer;
+                user-select: none;
+
+                &:hover {
+                    color: var(--alit-accent);
+                }
+            }
+        }
+        td {
+            padding: 9px 10px;
+            border-bottom: 1px solid #f0f1f6;
+            vertical-align: middle;
+        }
+        tbody tr:hover td {
+            background: #fafaff;
+        }
+        .num {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+        }
+    }
+    .alit-sort-idle {
+        opacity: 0.3;
+    }
+    .alit-prod {
+        font-weight: 600;
+    }
+    .alit-prod-code,
+    .alit-muted {
+        color: var(--alit-muted);
+    }
+    .alit-prod-code {
+        font-size: 11px;
+    }
+    .alit-strong {
+        font-weight: 700;
+    }
+    .alit-pill {
+        display: inline-block;
+        padding: 2px 9px;
+        border-radius: 99px;
+        font-weight: 700;
+        font-size: 11.5px;
+        background: var(--alit-accent-soft);
+        color: var(--alit-accent);
+
+        &.alt {
+            background: #e6f7f5;
+            color: #0f766e;
+        }
+    }
+}
