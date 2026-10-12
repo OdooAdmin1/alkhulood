@@ -22,6 +22,7 @@ BAHRAIN_OFFSET = timedelta(hours=3)
 PRIMARY_CODES = ('MS', 'GW')          # Main Store, Garden: default "From" filter
 GRAINS = ('day', 'week', 'month')
 EXPORT_LINE_CAP = 100000
+DRAWER_LINE_CAP = 3000
 DETAIL_SORT = {
     'product': 'd.product_name',
     'category': 'd.categ_name',
@@ -127,6 +128,7 @@ class InternalTransferDashboard(models.AbstractModel):
             SELECT sm.id AS move_id,
                    sm.date AS move_date,
                    sm.reference AS reference,
+                   sm.picking_id AS picking_id,
                    COALESCE(sm.picking_id::text, 'm' || sm.id::text) AS transfer_key,
                    sm.product_id AS product_id,
                    COALESCE(pt.name ->> %(lang)s, pt.name ->> 'en_US') AS product_name,
@@ -311,6 +313,90 @@ class InternalTransferDashboard(models.AbstractModel):
             'top_products': top_products,
             'detail': detail,
         }
+
+    # ------------------------------------------------------------------
+    # RPC: drill-down - the transfers (with product lines) of a day / week / month
+    # ------------------------------------------------------------------
+    @api.model
+    def get_transfers_for_period(self, filters=None, date_from=None, date_to=None):
+        self._check_access()
+        f = self._normalize_filters(filters)
+        try:
+            b_from = fields.Date.to_date(date_from)
+            b_to = fields.Date.to_date(date_to)
+        except (ValueError, TypeError):
+            raise UserError(_("Invalid date."))
+        if not b_from or not b_to:
+            raise UserError(_("Please pick a period."))
+        # the bucket can never reach outside the dashboard's own date range
+        f['date_from'] = max(f['date_from'], b_from)
+        f['date_to'] = min(f['date_to'], b_to)
+        result = {
+            'date_from': fields.Date.to_string(f['date_from']),
+            'date_to': fields.Date.to_string(f['date_to']),
+            'totals': {'value': 0.0, 'transfers': 0, 'lines': 0},
+            'transfers': [],
+            'truncated': False,
+            'shown_lines': 0,
+        }
+        if f['date_from'] > f['date_to']:
+            return result
+
+        cte, params = self._base_query(f)
+        cr = self.env.cr
+        cr.execute(cte + """
+            SELECT COALESCE(SUM(value), 0) AS total_value,
+                   COUNT(DISTINCT transfer_key) AS transfers,
+                   COUNT(*) AS lines
+              FROM base
+        """, params)
+        t = cr.dictfetchone()
+        result['totals'] = {'value': float(t['total_value']), 'transfers': t['transfers'], 'lines': t['lines']}
+
+        cr.execute(cte + """
+            SELECT b.transfer_key, b.picking_id, b.reference, b.move_date, b.move_id,
+                   b.product_name, b.default_code, b.uom_name, b.uom_mismatch,
+                   b.qty, b.unit_cost, b.value,
+                   b.src_wh, b.dst_wh, ws.code AS src_code, wd.code AS dst_code
+              FROM base b
+              JOIN stock_warehouse ws ON ws.id = b.src_wh
+              JOIN stock_warehouse wd ON wd.id = b.dst_wh
+             ORDER BY b.move_date DESC, b.move_id DESC
+             LIMIT %(cap)s
+        """, dict(params, cap=DRAWER_LINE_CAP + 1))
+        rows = cr.dictfetchall()
+        result['truncated'] = len(rows) > DRAWER_LINE_CAP
+        rows = rows[:DRAWER_LINE_CAP]
+        result['shown_lines'] = len(rows)
+
+        transfers = {}   # insertion order = latest transfer first
+        for r in rows:
+            key = '%s:%s:%s' % (r['transfer_key'], r['src_wh'], r['dst_wh'])
+            tr = transfers.get(key)
+            if tr is None:
+                tr = transfers[key] = {
+                    'key': key,
+                    'picking_id': r['picking_id'],
+                    'reference': r['reference'] or '',
+                    'date': (r['move_date'] + BAHRAIN_OFFSET).strftime('%Y-%m-%d %H:%M'),
+                    'src_id': r['src_wh'], 'dst_id': r['dst_wh'],
+                    'src_code': r['src_code'], 'dst_code': r['dst_code'],
+                    'value': 0.0,
+                    'line_count': 0,
+                    'lines': [],
+                }
+            value = float(r['value'])
+            tr['value'] += value
+            tr['line_count'] += 1
+            tr['lines'].append({
+                'product': r['product_name'], 'code': r['default_code'] or '',
+                'uom': r['uom_name'], 'uom_mismatch': bool(r['uom_mismatch']),
+                'qty': float(r['qty']), 'unit_cost': float(r['unit_cost']), 'value': value,
+            })
+        for tr in transfers.values():
+            tr['lines'].sort(key=lambda line: (-line['value'], line['product']))
+        result['transfers'] = list(transfers.values())
+        return result
 
     # ------------------------------------------------------------------
     # Excel export

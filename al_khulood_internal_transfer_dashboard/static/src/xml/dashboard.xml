@@ -33,7 +33,7 @@
 
     <!-- ============ Dashboard ============ -->
     <t t-name="al_internal_transfer_dashboard.Dashboard">
-        <div class="alit-root">
+        <div class="alit-root" t-ref="root" t-att-class="isDark ? 'alit-dark' : ''">
             <div class="alit-page">
 
                 <!-- Header -->
@@ -45,6 +45,15 @@
                         </p>
                     </div>
                     <div class="alit-header-actions">
+                        <div class="alit-seg alit-theme" title="Colour theme">
+                            <i class="fa fa-adjust alit-seg-label"/>
+                            <button type="button" t-att-class="state.theme === 'auto' ? 'active' : ''"
+                                    t-on-click="() => this.setTheme('auto')">Auto</button>
+                            <button type="button" t-att-class="state.theme === 'light' ? 'active' : ''"
+                                    t-on-click="() => this.setTheme('light')">Light</button>
+                            <button type="button" t-att-class="state.theme === 'dark' ? 'active' : ''"
+                                    t-on-click="() => this.setTheme('dark')">Dark</button>
+                        </div>
                         <button type="button" class="alit-btn alit-btn-ghost" t-on-click="resetFilters">
                             <i class="fa fa-undo"/> Reset
                         </button>
@@ -189,7 +198,10 @@
                                 <div class="alit-grid-2">
                                     <div class="alit-card">
                                         <div class="alit-card-head">
-                                            <h3>Value over time</h3>
+                                            <div>
+                                                <h3>Value over time</h3>
+                                                <span class="alit-hint">click a bar to see its transfers</span>
+                                            </div>
                                             <div class="alit-seg">
                                                 <button type="button" t-att-class="state.data.grain === 'day' ? 'active' : ''"
                                                         t-on-click="() => this.setGrain('day')">Day</button>
@@ -199,7 +211,8 @@
                                                         t-on-click="() => this.setGrain('month')">Month</button>
                                             </div>
                                         </div>
-                                        <svg class="alit-trend" t-att-viewBox="'0 0 ' + state.derived.trend.W + ' ' + state.derived.trend.H"
+                                        <svg t-att-class="'alit-trend' + (state.drawer.open ? ' alit-has-selection' : '')"
+                                             t-att-viewBox="'0 0 ' + state.derived.trend.W + ' ' + state.derived.trend.H"
                                              preserveAspectRatio="xMidYMid meet" role="img" aria-label="Transferred value over time">
                                             <t t-foreach="state.derived.trend.ticks" t-as="tick" t-key="tick_index">
                                                 <line class="alit-grid" t-att-x1="state.derived.trend.padL" t-att-x2="tick.x2"
@@ -208,10 +221,15 @@
                                                       text-anchor="end" t-esc="tick.label"/>
                                             </t>
                                             <t t-foreach="state.derived.trend.bars" t-as="bar" t-key="bar_index">
-                                                <rect class="alit-bar" t-att-x="bar.x" t-att-y="bar.y" t-att-width="bar.w"
-                                                      t-att-height="bar.h" rx="3">
+                                                <rect t-att-class="'alit-hit' + (isSelectedPeriod(bar.period) ? ' selected' : '')"
+                                                      t-att-x="bar.hitX" t-att-y="state.derived.trend.padT"
+                                                      t-att-width="bar.hitW" t-att-height="state.derived.trend.plotH" rx="4"
+                                                      t-on-click="() => this.openPeriod(bar.period)">
                                                     <title t-esc="bar.title"/>
                                                 </rect>
+                                                <rect t-att-class="'alit-bar' + (isSelectedPeriod(bar.period) ? ' selected' : '')"
+                                                      t-att-x="bar.x" t-att-y="bar.y" t-att-width="bar.w"
+                                                      t-att-height="bar.h" rx="3"/>
                                                 <text t-if="bar.showLabel" class="alit-axis" t-att-x="bar.cx"
                                                       t-att-y="state.derived.trend.baseY + 18" text-anchor="middle" t-esc="bar.label"/>
                                             </t>
@@ -370,6 +388,130 @@
                 <t t-else="">
                     <div class="alit-card alit-empty"><i class="fa fa-spinner fa-spin"/> <h3>Loading…</h3></div>
                 </t>
+            </div>
+
+            <!-- ============ Drill-down drawer: transfers of the clicked day ============ -->
+            <div class="alit-drawer-layer" t-if="state.drawer.open">
+                <div class="alit-backdrop" t-on-click="closeDrawer"/>
+                <aside class="alit-drawer" role="dialog" aria-label="Transfers detail">
+                    <header class="alit-drawer-head">
+                        <div>
+                            <div class="alit-drawer-kicker">Transfers on</div>
+                            <h2 class="alit-drawer-title" t-esc="state.drawer.title"/>
+                        </div>
+                        <button type="button" class="alit-icon-btn" title="Close (Esc)" t-on-click="closeDrawer">
+                            <i class="fa fa-times"/>
+                        </button>
+                    </header>
+                    <div class="alit-drawer-body">
+                        <t t-if="state.drawer.loading">
+                            <div class="alit-empty"><i class="fa fa-spinner fa-spin"/> <h3>Loading transfers…</h3></div>
+                        </t>
+                        <t t-elif="state.drawer.error">
+                            <div class="alit-alert alit-alert-error">
+                                <i class="fa fa-exclamation-triangle"/> <t t-esc="state.drawer.error"/>
+                            </div>
+                        </t>
+                        <t t-elif="state.drawer.data">
+                            <div class="alit-drawer-stats">
+                                <div class="alit-stat">
+                                    <div class="alit-stat-label">Value</div>
+                                    <div class="alit-stat-value">
+                                        <t t-esc="currencySymbol"/> <t t-esc="fmtMoney(state.drawer.data.totals.value)"/>
+                                    </div>
+                                </div>
+                                <div class="alit-stat">
+                                    <div class="alit-stat-label">Transfers</div>
+                                    <div class="alit-stat-value" t-esc="fmtInt(state.drawer.data.totals.transfers)"/>
+                                </div>
+                                <div class="alit-stat">
+                                    <div class="alit-stat-label">Product lines</div>
+                                    <div class="alit-stat-value" t-esc="fmtInt(state.drawer.data.totals.lines)"/>
+                                </div>
+                            </div>
+
+                            <div class="alit-alert alit-alert-warn" t-if="state.drawer.data.truncated">
+                                <i class="fa fa-exclamation-triangle"/>
+                                Showing the latest <t t-esc="fmtInt(state.drawer.data.shown_lines)"/> of
+                                <t t-esc="fmtInt(state.drawer.data.totals.lines)"/> product lines. The totals above include all of them;
+                                use the Excel export for the full list.
+                            </div>
+
+                            <t t-if="!state.drawer.data.transfers.length">
+                                <div class="alit-empty">
+                                    <i class="fa fa-exchange"/>
+                                    <h3>No transfers in this period</h3>
+                                </div>
+                            </t>
+                            <t t-else="">
+                                <div class="alit-drawer-tools">
+                                    <button type="button" class="alit-link" t-on-click="toggleAll">
+                                        <t t-esc="allExpanded ? 'Collapse all' : 'Expand all'"/>
+                                    </button>
+                                    <button type="button" class="alit-btn alit-btn-ghost" t-att-disabled="state.exporting"
+                                            t-on-click="exportPeriod">
+                                        <i t-att-class="state.exporting ? 'fa fa-spinner fa-spin' : 'fa fa-file-excel-o'"/>
+                                        Export this period
+                                    </button>
+                                </div>
+
+                                <t t-foreach="state.drawer.data.transfers" t-as="trf" t-key="trf.key">
+                                    <div t-att-class="'alit-tr' + (isExpanded(trf.key) ? ' open' : '')">
+                                        <button type="button" class="alit-tr-head" t-on-click="() => this.toggleTransfer(trf.key)">
+                                            <i t-att-class="isExpanded(trf.key) ? 'fa fa-chevron-down' : 'fa fa-chevron-right'"/>
+                                            <span>
+                                                <span class="alit-tr-ref" t-esc="trf.reference"/>
+                                                <span class="alit-tr-time" t-esc="trTime(trf)"/>
+                                            </span>
+                                            <span class="alit-tr-route">
+                                                <span class="alit-pill" t-att-title="whName(trf.src_id)" t-esc="trf.src_code"/>
+                                                →
+                                                <span class="alit-pill alt" t-att-title="whName(trf.dst_id)" t-esc="trf.dst_code"/>
+                                            </span>
+                                            <span class="alit-tr-meta"><t t-esc="trf.line_count"/> items</span>
+                                            <span class="alit-tr-value" t-esc="fmtMoney(trf.value)"/>
+                                        </button>
+                                        <div class="alit-tr-body" t-if="isExpanded(trf.key)">
+                                            <table class="alit-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Product</th>
+                                                        <th class="num">Quantity</th>
+                                                        <th class="num">Unit cost</th>
+                                                        <th class="num">Value</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <t t-foreach="trf.lines" t-as="line" t-key="line_index">
+                                                        <tr>
+                                                            <td>
+                                                                <div class="alit-prod" t-esc="line.product"/>
+                                                                <div class="alit-prod-code" t-if="line.code" t-esc="line.code"/>
+                                                            </td>
+                                                            <td class="num">
+                                                                <t t-esc="fmtQty(line.qty)"/>
+                                                                <span class="alit-muted" t-esc="line.uom"/>
+                                                                <i class="fa fa-exclamation-triangle" t-if="line.uom_mismatch"
+                                                                   title="Unit differs from the product's own unit; value may be inaccurate"/>
+                                                            </td>
+                                                            <td class="num alit-muted" t-esc="fmtMoney(line.unit_cost)"/>
+                                                            <td class="num alit-strong" t-esc="fmtMoney(line.value)"/>
+                                                        </tr>
+                                                    </t>
+                                                </tbody>
+                                            </table>
+                                            <div class="alit-tr-actions" t-if="trf.picking_id">
+                                                <button type="button" class="alit-link" t-on-click="() => this.openPicking(trf.picking_id)">
+                                                    <i class="fa fa-external-link"/> Open transfer <t t-esc="trf.reference"/>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </t>
+                            </t>
+                        </t>
+                    </div>
+                </aside>
             </div>
         </div>
     </t>

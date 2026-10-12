@@ -1,11 +1,17 @@
 /** @odoo-module **/
-import { Component, onWillStart, useExternalListener, useRef, useState } from "@odoo/owl";
+import { Component, onMounted, onWillStart, useExternalListener, useRef, useState } from "@odoo/owl";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
 import { download } from "@web/core/network/download";
 
 const MODEL = "al.internal.transfer.dashboard";
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const MONTHS_LONG = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
+];
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const THEME_KEY = "alit_theme";
 
 // ---- date helpers (all on plain "YYYY-MM-DD" strings, no timezone surprises) ----
 function parseIso(iso) {
@@ -29,6 +35,61 @@ function monthEnd(iso) {
 function shortDate(iso, withYear = false) {
     const { y, m, d } = parseIso(iso);
     return `${d} ${MONTHS[m - 1]}${withYear ? " " + String(y).slice(2) : ""}`;
+}
+function fullDate(iso, withWeekday = false) {
+    const { y, m, d } = parseIso(iso);
+    const base = `${d} ${MONTHS[m - 1]} ${y}`;
+    if (!withWeekday) {
+        return base;
+    }
+    const wd = WEEKDAYS[new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
+    return `${wd}, ${base}`;
+}
+
+// ---- theme helpers ----
+function parseRgb(str) {
+    const m = (str || "").match(/rgba?\(([^)]+)\)/);
+    if (!m) {
+        return null;
+    }
+    const p = m[1].split(/[ ,/]+/).filter(Boolean).map(parseFloat);
+    return { r: p[0], g: p[1], b: p[2], a: p.length > 3 ? p[3] : 1 };
+}
+function luminance({ r, g, b }) {
+    return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+}
+/** True when the Odoo page around `el` is painted dark. */
+function detectDark(el) {
+    try {
+        for (let node = el; node; node = node.parentElement) {
+            const c = parseRgb(getComputedStyle(node).backgroundColor);
+            if (c && c.a > 0.5) {
+                return luminance(c) < 0.45;
+            }
+        }
+        const html = document.documentElement;
+        if (html.getAttribute("data-bs-theme") === "dark" || html.dataset.colorScheme === "dark") {
+            return true;
+        }
+        return /(?:^|;\s*)color_scheme=dark/.test(document.cookie);
+    } catch {
+        return false;
+    }
+}
+function readTheme() {
+    try {
+        const t = window.localStorage.getItem(THEME_KEY);
+        return ["auto", "light", "dark"].includes(t) ? t : "auto";
+    } catch {
+        return "auto";
+    }
+}
+function saveTheme(theme) {
+    try {
+        window.localStorage.setItem(THEME_KEY, theme);
+    } catch {
+        // storage can be blocked; the choice then simply lasts for this page view
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -116,14 +177,19 @@ class InternalTransferDashboard extends Component {
 
     setup() {
         this.orm = useService("orm");
+        this.action = useService("action");
         this.notification = useService("notification");
+        this.rootRef = useRef("root");
         this.requestId = 0;
+        this.drawerRequestId = 0;
         this.searchTimer = null;
         this.state = useState({
             ready: false,
             loading: true,
             exporting: false,
             error: null,
+            theme: readTheme(),
+            detectedDark: false,
             preset: "month",
             filters: {
                 date_from: "",
@@ -140,6 +206,22 @@ class InternalTransferDashboard extends Component {
             limit: 25,
             data: null,
             derived: null,
+            drawer: {
+                open: false,
+                loading: false,
+                error: null,
+                period: null,
+                from: null,
+                to: null,
+                title: "",
+                data: null,
+                expanded: {},
+            },
+        });
+        useExternalListener(window, "keydown", (ev) => {
+            if (ev.key === "Escape" && this.state.drawer.open) {
+                this.closeDrawer();
+            }
         });
         onWillStart(async () => {
             const opts = await this.orm.call(MODEL, "get_options", []);
@@ -156,6 +238,20 @@ class InternalTransferDashboard extends Component {
             await this.load();
             this.state.ready = true;
         });
+        onMounted(() => {
+            const el = this.rootRef.el;
+            this.state.detectedDark = detectDark(el ? el.parentElement : null);
+        });
+    }
+
+    // ---- theme ------------------------------------------------------------
+    get isDark() {
+        const t = this.state.theme;
+        return t === "dark" || (t === "auto" && this.state.detectedDark);
+    }
+    setTheme(theme) {
+        this.state.theme = theme;
+        saveTheme(theme);
     }
 
     // ---- formatting -----------------------------------------------------
@@ -195,31 +291,28 @@ class InternalTransferDashboard extends Component {
         const w = this.whById.get(id);
         return w ? w.name : String(id);
     }
-    periodLabel(iso) {
-        const grain = this.state.data.grain;
-        if (grain === "month") {
-            const { y, m } = parseIso(iso);
-            return `${MONTHS[m - 1]} ${String(y).slice(2)}`;
-        }
-        return shortDate(iso);
-    }
 
     // ---- loading --------------------------------------------------------
+    currentFilters(overrides = {}) {
+        const f = this.state.filters;
+        return {
+            date_from: f.date_from,
+            date_to: f.date_to,
+            src_ids: [...f.src_ids],
+            dst_ids: [...f.dst_ids],
+            categ_ids: [...f.categ_ids],
+            search: f.search,
+            ...overrides,
+        };
+    }
+
     async load() {
         const myId = ++this.requestId;
         this.state.loading = true;
         this.state.error = null;
         try {
-            const f = this.state.filters;
             const data = await this.orm.call(MODEL, "get_dashboard_data", [], {
-                filters: {
-                    date_from: f.date_from,
-                    date_to: f.date_to,
-                    src_ids: [...f.src_ids],
-                    dst_ids: [...f.dst_ids],
-                    categ_ids: [...f.categ_ids],
-                    search: f.search,
-                },
+                filters: this.currentFilters(),
                 grain: this.state.grain,
                 sort: this.state.sort,
                 order: this.state.order,
@@ -243,6 +336,7 @@ class InternalTransferDashboard extends Component {
     }
 
     reloadFromFirstPage() {
+        this.closeDrawer();
         this.state.page = 1;
         return this.load();
     }
@@ -278,8 +372,9 @@ class InternalTransferDashboard extends Component {
                     dst: d,
                     value: v,
                     transfers: r ? r.transfers : 0,
-                    style: v ? `background: rgba(67, 56, 202, ${alpha.toFixed(3)});` : "",
-                    dark: alpha > 0.5,
+                    // the colour channels come from the theme (--alit-heat-rgb)
+                    style: v ? `background: rgba(var(--alit-heat-rgb), ${alpha.toFixed(3)});` : "",
+                    dark: alpha > 0.68,
                 };
             }),
         }));
@@ -336,14 +431,17 @@ class InternalTransferDashboard extends Component {
         const bars = pts.map((p, i) => {
             const h = niceMax ? (p.value / niceMax) * plotH : 0;
             return {
+                period: p.period,
                 x: padL + slot * i + (slot - bw) / 2,
                 y: padT + plotH - h,
                 w: bw,
                 h: Math.max(h, p.value ? 1 : 0),
                 cx: padL + slot * i + slot / 2,
+                hitX: padL + slot * i,
+                hitW: slot,
                 label: this.periodLabelFor(p.period, data.grain),
                 showLabel: i % labelStep === 0,
-                title: `${this.periodLabelFor(p.period, data.grain, true)}: ${this.fmtMoney(p.value)} (${p.transfers} transfers)`,
+                title: `${this.periodLabelFor(p.period, data.grain, true)}: ${this.fmtMoney(p.value)} (${p.transfers} transfers)\nClick to see the transfers`,
             };
         });
         const ticks = [0, 1, 2, 3, 4].map((i) => {
@@ -426,6 +524,7 @@ class InternalTransferDashboard extends Component {
     }
 
     setGrain(grain) {
+        this.closeDrawer();
         this.state.grain = grain;
         return this.load();
     }
@@ -517,26 +616,148 @@ class InternalTransferDashboard extends Component {
         return this.reloadFromFirstPage();
     }
 
+    // ---- drill-down drawer (click a bar) -------------------------------
+    isSelectedPeriod(period) {
+        return this.state.drawer.open && this.state.drawer.period === period;
+    }
+
+    /** Date range covered by a chart bar, clipped to the dashboard's own range. */
+    bucketRange(period, grain) {
+        const f = this.state.filters;
+        let from = period;
+        let to = period;
+        if (grain === "week") {
+            to = addDays(period, 6);
+        } else if (grain === "month") {
+            to = monthEnd(period);
+        }
+        if (from < f.date_from) {
+            from = f.date_from;
+        }
+        if (to > f.date_to) {
+            to = f.date_to;
+        }
+        return { from, to };
+    }
+
+    drawerTitle(from, to, grain) {
+        if (from === to) {
+            return fullDate(from, true);
+        }
+        if (grain === "month" && from === monthStart(from) && to === monthEnd(from)) {
+            const { y, m } = parseIso(from);
+            return `${MONTHS_LONG[m - 1]} ${y}`;
+        }
+        return `${fullDate(from)} – ${fullDate(to)}`;
+    }
+
+    async openPeriod(period) {
+        const grain = this.state.data.grain;
+        const { from, to } = this.bucketRange(period, grain);
+        const drawer = this.state.drawer;
+        const myId = ++this.drawerRequestId;
+        Object.assign(drawer, {
+            open: true,
+            loading: true,
+            error: null,
+            period,
+            from,
+            to,
+            title: this.drawerTitle(from, to, grain),
+            data: null,
+            expanded: {},
+        });
+        try {
+            const data = await this.orm.call(MODEL, "get_transfers_for_period", [], {
+                filters: this.currentFilters(),
+                date_from: from,
+                date_to: to,
+            });
+            if (myId !== this.drawerRequestId) {
+                return;
+            }
+            drawer.data = data;
+            // a short list opens expanded so the product lines are visible straight away
+            if (data.transfers.length && data.transfers.length <= 3) {
+                for (const tr of data.transfers) {
+                    drawer.expanded[tr.key] = true;
+                }
+            }
+        } catch (e) {
+            if (myId === this.drawerRequestId) {
+                drawer.error = (e && e.data && e.data.message) || (e && e.message) || "Could not load the transfers.";
+            }
+        } finally {
+            if (myId === this.drawerRequestId) {
+                drawer.loading = false;
+            }
+        }
+    }
+
+    closeDrawer() {
+        this.drawerRequestId++;
+        this.state.drawer.open = false;
+        this.state.drawer.period = null;
+    }
+
+    toggleTransfer(key) {
+        this.state.drawer.expanded[key] = !this.state.drawer.expanded[key];
+    }
+    isExpanded(key) {
+        return !!this.state.drawer.expanded[key];
+    }
+    expandAll() {
+        for (const tr of this.state.drawer.data.transfers) {
+            this.state.drawer.expanded[tr.key] = true;
+        }
+    }
+    collapseAll() {
+        this.state.drawer.expanded = {};
+    }
+    toggleAll() {
+        if (this.allExpanded) {
+            this.collapseAll();
+        } else {
+            this.expandAll();
+        }
+    }
+    get allExpanded() {
+        const d = this.state.drawer;
+        return !!(d.data && d.data.transfers.length) && d.data.transfers.every((tr) => d.expanded[tr.key]);
+    }
+    trTime(tr) {
+        const d = this.state.drawer;
+        const day = tr.date.slice(0, 10);
+        const time = tr.date.slice(11, 16);
+        return d.from === d.to ? time : `${shortDate(day)} · ${time}`;
+    }
+    openPicking(pickingId) {
+        return this.action.doAction({
+            type: "ir.actions.act_window",
+            res_model: "stock.picking",
+            res_id: pickingId,
+            views: [[false, "form"]],
+            target: "current",
+        });
+    }
+
     // ---- export ---------------------------------------------------------
-    async exportXlsx() {
+    exportXlsx() {
+        return this.runExport(this.currentFilters());
+    }
+    exportPeriod() {
+        const d = this.state.drawer;
+        return this.runExport(this.currentFilters({ date_from: d.from, date_to: d.to }));
+    }
+    async runExport(filters) {
         if (this.state.exporting) {
             return;
         }
         this.state.exporting = true;
         try {
-            const f = this.state.filters;
             await download({
                 url: "/al_internal_transfer_dashboard/export",
-                data: {
-                    filters: JSON.stringify({
-                        date_from: f.date_from,
-                        date_to: f.date_to,
-                        src_ids: f.src_ids,
-                        dst_ids: f.dst_ids,
-                        categ_ids: f.categ_ids,
-                        search: f.search,
-                    }),
-                },
+                data: { filters: JSON.stringify(filters) },
             });
         } catch (e) {
             this.notification.add("The Excel export failed. Please try again or narrow the filters.", {
