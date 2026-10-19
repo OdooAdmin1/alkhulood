@@ -1,0 +1,23 @@
+// Footer of the POS customer receipt.
+.amwal-powered-by {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.3em;
+    white-space: nowrap;
+}
+
+.amwal-powered-by-logo {
+    // Just above the cap height of the text it sits next to, so the mark reads
+    // as part of the line rather than as a separate image.
+    height: 1.15em;
+    width: auto;
+
+    // The PNG carries its own alpha channel, so no background is painted here:
+    // the mark composites onto a receipt of any colour.
+    background: none;
+
+    // Receipts are printed; without this most browsers drop the artwork.
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+}
