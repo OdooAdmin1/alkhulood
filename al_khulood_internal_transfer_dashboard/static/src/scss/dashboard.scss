@@ -1,0 +1,1005 @@
+// Al Khulood - Internal Transfers dashboard
+// Everything is scoped under .alit-root so nothing leaks into the rest of Odoo.
+//
+// Theme: the dashboard paints its OWN background, so it must also set its OWN text colours.
+// (Odoo's dark mode makes inherited text light; on a light card that is invisible.)
+// Light palette = default. `.alit-dark` is switched on from JS (auto-detected, or by the
+// Auto / Light / Dark switch in the header).
+
+.alit-root {
+    // ---- light palette ----
+    --alit-bg: #f3f4f9;
+    --alit-card: #ffffff;
+    --alit-surface-2: #f0f1f8;     // subtle fills (segmented control, totals)
+    --alit-surface-3: #e8eaf3;     // bar tracks
+    --alit-empty-cell: #f5f6fb;
+    --alit-row-hover: #f7f7ff;
+    --alit-ink: #151a2c;
+    --alit-muted: #586079;
+    --alit-line: #dfe2ee;
+    --alit-line-soft: #eceef6;
+    --alit-accent: #4338ca;        // text/links on the surface
+    --alit-accent-btn: #4338ca;    // solid button background
+    --alit-accent-soft: #eceeff;
+    --alit-teal: #0f766e;
+    --alit-teal-soft: #e0f5f2;
+    --alit-bar: #4f46e5;
+    --alit-bar-selected: #0d9488;
+    --alit-heat-rgb: 67, 56, 202;
+    --alit-info-bg: #e8f0fe;
+    --alit-info-ink: #1e3a8a;
+    --alit-warn-bg: #fff1e0;
+    --alit-warn-ink: #8a3b0a;
+    --alit-err-bg: #fde8e8;
+    --alit-err-ink: #8f1d1d;
+    --alit-shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
+    --alit-radius: 14px;
+
+    color-scheme: light;
+    height: 100%;
+    overflow-y: auto;
+    background: var(--alit-bg);
+    color: var(--alit-ink);
+    font-size: 13px;
+
+    // ---- dark palette ----
+    &.alit-dark {
+        --alit-bg: #11131b;
+        --alit-card: #1b1e2c;
+        --alit-surface-2: #262a3b;
+        --alit-surface-3: #2c3145;
+        --alit-empty-cell: #212536;
+        --alit-row-hover: #222639;
+        --alit-ink: #eceff8;
+        --alit-muted: #a6afc6;
+        --alit-line: #323852;
+        --alit-line-soft: #272c42;
+        --alit-accent: #a5b4fc;
+        --alit-accent-btn: #6366f1;
+        --alit-accent-soft: rgba(129, 140, 248, 0.18);
+        --alit-teal: #5eead4;
+        --alit-teal-soft: rgba(45, 212, 191, 0.15);
+        --alit-bar: #818cf8;
+        --alit-bar-selected: #2dd4bf;
+        --alit-heat-rgb: 99, 102, 241;
+        --alit-info-bg: rgba(96, 165, 250, 0.16);
+        --alit-info-ink: #bfdbfe;
+        --alit-warn-bg: rgba(251, 146, 60, 0.16);
+        --alit-warn-ink: #fed7aa;
+        --alit-err-bg: rgba(248, 113, 113, 0.16);
+        --alit-err-ink: #fecaca;
+        --alit-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+        color-scheme: dark;
+    }
+
+    // Force our colours on elements Odoo / Bootstrap may restyle.
+    h1, h2, h3, h4, th, td, label, span, div, p, b, i {
+        color: inherit;
+    }
+    button,
+    input,
+    select {
+        font-family: inherit;
+        font-size: inherit;
+        color: inherit;
+    }
+    button {
+        background: transparent;
+    }
+
+    .alit-page {
+        max-width: 1500px;
+        margin: 0 auto;
+        padding: 20px 24px 40px;
+    }
+
+    // ---- header ----
+    .alit-header {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 16px;
+        flex-wrap: wrap;
+    }
+    .alit-title {
+        margin: 0;
+        font-size: 26px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        color: var(--alit-ink);
+    }
+    .alit-subtitle {
+        margin: 2px 0 0;
+        color: var(--alit-muted);
+    }
+    .alit-header-actions {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    // ---- buttons ----
+    .alit-btn {
+        border: 1px solid transparent;
+        border-radius: 10px;
+        padding: 8px 14px;
+        font-weight: 600;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: transform 0.08s ease, box-shadow 0.15s ease, background 0.15s ease;
+
+        &:disabled {
+            opacity: 0.6;
+            cursor: default;
+        }
+        &:not(:disabled):active {
+            transform: translateY(1px);
+        }
+    }
+    .alit-btn-primary {
+        background: var(--alit-accent-btn);
+        color: #fff;
+        box-shadow: 0 4px 14px rgba(67, 56, 202, 0.28);
+
+        i,
+        span {
+            color: #fff;
+        }
+        &:not(:disabled):hover {
+            filter: brightness(1.1);
+        }
+    }
+    .alit-btn-ghost {
+        background: var(--alit-card);
+        color: var(--alit-ink);
+        border-color: var(--alit-line);
+
+        &:hover {
+            background: var(--alit-accent-soft);
+        }
+    }
+    .alit-link {
+        background: none;
+        border: 0;
+        padding: 0;
+        color: var(--alit-accent);
+        font-weight: 600;
+        cursor: pointer;
+
+        i {
+            color: inherit;
+        }
+        &:hover {
+            text-decoration: underline;
+        }
+    }
+    .alit-icon-btn {
+        border: 1px solid var(--alit-line);
+        background: var(--alit-card);
+        color: var(--alit-ink);
+        border-radius: 8px;
+        width: 30px;
+        height: 30px;
+        cursor: pointer;
+
+        &:disabled {
+            opacity: 0.4;
+            cursor: default;
+        }
+        &:not(:disabled):hover {
+            background: var(--alit-accent-soft);
+        }
+    }
+
+    // ---- filters ----
+    .alit-filters {
+        background: var(--alit-card);
+        border: 1px solid var(--alit-line);
+        border-radius: var(--alit-radius);
+        padding: 14px 16px;
+        margin-bottom: 14px;
+        box-shadow: var(--alit-shadow);
+    }
+    .alit-presets {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        margin-bottom: 12px;
+    }
+    .alit-chip {
+        border: 1px solid var(--alit-line);
+        background: var(--alit-card);
+        color: var(--alit-muted);
+        border-radius: 999px;
+        padding: 4px 12px;
+        font-weight: 600;
+        cursor: pointer;
+
+        &:hover {
+            color: var(--alit-accent);
+            border-color: var(--alit-accent);
+        }
+        &.active {
+            background: var(--alit-accent-btn);
+            border-color: var(--alit-accent-btn);
+            color: #fff;
+        }
+    }
+    .alit-filter-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+        gap: 10px;
+    }
+    .alit-field {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        background: var(--alit-card);
+        border: 1px solid var(--alit-line);
+        border-radius: 10px;
+        padding: 6px 10px;
+        text-align: left;
+        min-height: 52px;
+        justify-content: center;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+        &:focus-within,
+        &.is-open {
+            border-color: var(--alit-accent-btn);
+            box-shadow: 0 0 0 3px var(--alit-accent-soft);
+        }
+        input {
+            border: 0;
+            outline: 0;
+            background: transparent;
+            font-weight: 600;
+            padding: 0;
+            color: var(--alit-ink);
+            width: 100%;
+
+            &::placeholder {
+                color: var(--alit-muted);
+                opacity: 0.8;
+            }
+        }
+    }
+    .alit-field-label {
+        font-size: 10.5px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--alit-muted);
+        font-weight: 700;
+    }
+
+    // ---- multi select ----
+    .alit-ms {
+        position: relative;
+    }
+    .alit-ms-btn {
+        width: 100%;
+        cursor: pointer;
+        position: relative;
+        padding-right: 26px;
+
+        &.has-value .alit-ms-summary {
+            color: var(--alit-accent);
+        }
+    }
+    .alit-ms-summary {
+        font-weight: 600;
+        color: var(--alit-ink);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .alit-ms-caret {
+        position: absolute;
+        right: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--alit-muted);
+    }
+    .alit-ms-menu {
+        position: absolute;
+        z-index: 30;
+        top: calc(100% + 6px);
+        left: 0;
+        min-width: 100%;
+        width: max-content;
+        max-width: 340px;
+        background: var(--alit-card);
+        color: var(--alit-ink);
+        border: 1px solid var(--alit-line);
+        border-radius: 12px;
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+        padding: 8px;
+    }
+    .alit-ms-search {
+        width: 100%;
+        border: 1px solid var(--alit-line);
+        background: var(--alit-bg);
+        color: var(--alit-ink);
+        border-radius: 8px;
+        padding: 6px 8px;
+        outline: 0;
+
+        &:focus {
+            border-color: var(--alit-accent-btn);
+        }
+    }
+    .alit-ms-actions {
+        display: flex;
+        justify-content: space-between;
+        padding: 6px 2px;
+    }
+    .alit-ms-list {
+        max-height: 260px;
+        overflow-y: auto;
+    }
+    .alit-ms-opt {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 5px 6px;
+        border-radius: 6px;
+        cursor: pointer;
+        margin: 0;
+        color: var(--alit-ink);
+
+        &:hover {
+            background: var(--alit-accent-soft);
+        }
+    }
+    .alit-ms-empty {
+        padding: 8px;
+        color: var(--alit-muted);
+    }
+
+    // ---- theme switch ----
+    .alit-theme {
+        .alit-seg-label {
+            padding: 0 8px 0 6px;
+            color: var(--alit-muted);
+        }
+    }
+
+    // ---- alerts ----
+    .alit-alert {
+        border-radius: 10px;
+        padding: 8px 12px;
+        margin-bottom: 8px;
+        display: flex;
+        gap: 8px;
+        align-items: flex-start;
+    }
+    .alit-alert-info {
+        background: var(--alit-info-bg);
+        color: var(--alit-info-ink);
+    }
+    .alit-alert-warn {
+        background: var(--alit-warn-bg);
+        color: var(--alit-warn-ink);
+    }
+    .alit-alert-error {
+        background: var(--alit-err-bg);
+        color: var(--alit-err-ink);
+    }
+
+    // ---- body / loading ----
+    .alit-body {
+        transition: opacity 0.15s ease;
+
+        &.is-loading {
+            opacity: 0.55;
+            pointer-events: none;
+        }
+    }
+
+    // ---- cards ----
+    .alit-card {
+        background: var(--alit-card);
+        color: var(--alit-ink);
+        border: 1px solid var(--alit-line);
+        border-radius: var(--alit-radius);
+        padding: 16px;
+        box-shadow: var(--alit-shadow);
+        min-width: 0;
+    }
+    .alit-card-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 12px;
+        flex-wrap: wrap;
+
+        h3 {
+            margin: 0;
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--alit-ink);
+        }
+    }
+    .alit-card-foot {
+        margin-top: 10px;
+    }
+    .alit-hint {
+        color: var(--alit-muted);
+        font-size: 12px;
+    }
+    .alit-empty {
+        text-align: center;
+        padding: 48px 16px;
+        color: var(--alit-muted);
+
+        i {
+            font-size: 30px;
+            margin-bottom: 10px;
+            color: var(--alit-accent);
+        }
+        h3 {
+            margin: 0 0 4px;
+            color: var(--alit-ink);
+        }
+    }
+
+    // ---- KPIs ----
+    .alit-kpis {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+        gap: 12px;
+        margin: 12px 0;
+    }
+    .alit-kpi {
+        padding: 14px 16px;
+    }
+    .alit-kpi-accent {
+        background: linear-gradient(135deg, #4338ca 0%, #6366f1 100%);
+        border-color: transparent;
+
+        .alit-kpi-label,
+        .alit-kpi-foot {
+            color: rgba(255, 255, 255, 0.85);
+        }
+        .alit-kpi-value,
+        .alit-kpi-cur {
+            color: #fff;
+        }
+    }
+    .alit-kpi-label {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        font-weight: 700;
+        color: var(--alit-muted);
+    }
+    .alit-kpi-value {
+        font-size: 26px;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        margin: 4px 0 2px;
+        color: var(--alit-ink);
+        font-variant-numeric: tabular-nums;
+    }
+    .alit-kpi-text {
+        font-size: 20px;
+    }
+    .alit-kpi-cur {
+        font-size: 13px;
+        font-weight: 700;
+        opacity: 0.85;
+        margin-right: 2px;
+    }
+    .alit-kpi-foot {
+        color: var(--alit-muted);
+        font-size: 12px;
+    }
+    .alit-clamp {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        line-height: 1.25;
+        font-size: 16px;
+    }
+
+    // ---- grids ----
+    .alit-grid-2 {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+        margin-bottom: 12px;
+    }
+    .alit-grid-wide-left {
+        grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+    }
+    @media (max-width: 1100px) {
+        .alit-grid-2,
+        .alit-grid-wide-left {
+            grid-template-columns: minmax(0, 1fr);
+        }
+    }
+
+    // ---- segmented control ----
+    .alit-seg {
+        display: inline-flex;
+        align-items: center;
+        background: var(--alit-surface-2);
+        border-radius: 9px;
+        padding: 2px;
+
+        button {
+            border: 0;
+            background: transparent;
+            padding: 3px 11px;
+            border-radius: 7px;
+            font-weight: 600;
+            color: var(--alit-muted);
+            cursor: pointer;
+
+            &:hover {
+                color: var(--alit-ink);
+            }
+            &.active {
+                background: var(--alit-card);
+                color: var(--alit-accent);
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+            }
+        }
+    }
+
+    // ---- trend chart ----
+    .alit-trend {
+        width: 100%;
+        height: auto;
+        display: block;
+    }
+    .alit-grid {
+        stroke: var(--alit-line);
+        stroke-width: 1;
+    }
+    .alit-axis {
+        fill: var(--alit-muted);
+        font-size: 10.5px;
+    }
+    .alit-hit {
+        fill: transparent;
+        cursor: pointer;
+        pointer-events: all;
+        transition: fill 0.12s ease;
+
+        &:hover {
+            fill: var(--alit-accent-soft);
+        }
+        &.selected {
+            fill: var(--alit-teal-soft);
+        }
+    }
+    .alit-bar {
+        fill: var(--alit-bar);
+        opacity: 0.92;
+        pointer-events: none;
+        transition: opacity 0.12s ease, fill 0.12s ease;
+
+        &.selected {
+            fill: var(--alit-bar-selected);
+            opacity: 1;
+        }
+    }
+    .alit-has-selection .alit-bar:not(.selected) {
+        opacity: 0.45;
+    }
+
+    // ---- horizontal bars ----
+    .alit-bars {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+    .alit-barrow {
+        display: grid;
+        grid-template-columns: 78px minmax(0, 1fr) 92px;
+        align-items: center;
+        gap: 10px;
+        border: 0;
+        background: transparent;
+        color: var(--alit-ink);
+        padding: 4px 6px;
+        border-radius: 8px;
+        text-align: left;
+        width: 100%;
+        cursor: pointer;
+
+        &:hover {
+            background: var(--alit-accent-soft);
+        }
+        &.alit-barrow-static {
+            cursor: default;
+            grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) 84px;
+
+            &:hover {
+                background: transparent;
+            }
+        }
+    }
+    .alit-barrow-label {
+        font-weight: 700;
+        white-space: nowrap;
+        color: var(--alit-ink);
+    }
+    .alit-barrow-label-wide {
+        font-weight: 600;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .alit-barrow-track {
+        height: 10px;
+        background: var(--alit-surface-3);
+        border-radius: 99px;
+        overflow: hidden;
+    }
+    .alit-barrow-fill {
+        display: block;
+        height: 100%;
+        border-radius: 99px;
+        background: linear-gradient(90deg, #4338ca, #818cf8);
+
+        &.alt {
+            background: linear-gradient(90deg, #0d9488, #5eead4);
+        }
+    }
+    .alit-barrow-value {
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+        font-weight: 700;
+        color: var(--alit-ink);
+    }
+
+    // ---- matrix ----
+    .alit-matrix-wrap {
+        overflow: auto;
+        max-height: 520px;
+    }
+    .alit-matrix {
+        border-collapse: separate;
+        border-spacing: 3px;
+        width: 100%;
+        font-variant-numeric: tabular-nums;
+        color: var(--alit-ink);
+
+        th,
+        td {
+            text-align: center;
+            padding: 6px 8px;
+            border-radius: 6px;
+            white-space: nowrap;
+        }
+        thead th {
+            position: sticky;
+            top: 0;
+            background: var(--alit-card);
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--alit-muted);
+            z-index: 2;
+        }
+        .alit-corner {
+            text-align: left;
+            left: 0;
+            z-index: 3;
+        }
+        .alit-rowhead {
+            text-align: left;
+            font-weight: 700;
+            color: var(--alit-ink);
+            position: sticky;
+            left: 0;
+            background: var(--alit-card);
+            z-index: 1;
+        }
+        .alit-cell {
+            cursor: pointer;
+            font-weight: 600;
+            color: var(--alit-ink);
+            transition: transform 0.08s ease;
+
+            &:hover {
+                transform: scale(1.06);
+                outline: 2px solid var(--alit-accent-btn);
+            }
+            &.dark {
+                color: #fff;
+            }
+        }
+        .alit-cell-empty {
+            background: var(--alit-empty-cell);
+        }
+        .alit-total {
+            font-weight: 700;
+            color: var(--alit-ink);
+            background: var(--alit-surface-2);
+        }
+        tfoot th,
+        tfoot td {
+            position: sticky;
+            bottom: 0;
+        }
+    }
+
+    // ---- table ----
+    .alit-table-tools {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .alit-select {
+        border: 1px solid var(--alit-line);
+        border-radius: 8px;
+        padding: 4px 8px;
+        background: var(--alit-card);
+        color: var(--alit-ink);
+    }
+    .alit-table-wrap {
+        overflow-x: auto;
+    }
+    .alit-table {
+        width: 100%;
+        border-collapse: collapse;
+        color: var(--alit-ink);
+
+        th {
+            text-align: left;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--alit-muted);
+            padding: 8px 10px;
+            border-bottom: 1px solid var(--alit-line);
+            white-space: nowrap;
+            background: transparent;
+
+            &.sortable {
+                cursor: pointer;
+                user-select: none;
+
+                &:hover {
+                    color: var(--alit-accent);
+                }
+            }
+        }
+        td {
+            padding: 9px 10px;
+            border-bottom: 1px solid var(--alit-line-soft);
+            vertical-align: middle;
+            background: transparent;
+            color: var(--alit-ink);
+        }
+        tbody tr:hover td {
+            background: var(--alit-row-hover);
+        }
+        .num {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+        }
+    }
+    .alit-sort-idle {
+        opacity: 0.35;
+    }
+    .alit-prod {
+        font-weight: 600;
+        color: var(--alit-ink);
+    }
+    .alit-prod-code,
+    .alit-muted {
+        color: var(--alit-muted);
+    }
+    .alit-prod-code {
+        font-size: 11px;
+    }
+    .alit-strong {
+        font-weight: 700;
+    }
+    .alit-pill {
+        display: inline-block;
+        padding: 2px 9px;
+        border-radius: 99px;
+        font-weight: 700;
+        font-size: 11.5px;
+        background: var(--alit-accent-soft);
+        color: var(--alit-accent);
+
+        &.alt {
+            background: var(--alit-teal-soft);
+            color: var(--alit-teal);
+        }
+    }
+
+    // ---- drill-down drawer ----
+    .alit-drawer-layer {
+        position: fixed;
+        inset: 0;
+        z-index: 1050;
+        display: flex;
+        justify-content: flex-end;
+    }
+    .alit-backdrop {
+        position: absolute;
+        inset: 0;
+        background: rgba(6, 8, 18, 0.55);
+        animation: alit-fade 0.15s ease-out;
+    }
+    .alit-drawer {
+        position: relative;
+        width: 660px;
+        max-width: 100vw;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        background: var(--alit-bg);
+        color: var(--alit-ink);
+        border-left: 1px solid var(--alit-line);
+        box-shadow: -16px 0 48px rgba(0, 0, 0, 0.35);
+        animation: alit-slide 0.2s ease-out;
+    }
+    .alit-drawer-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 16px 18px 12px;
+        background: var(--alit-card);
+        border-bottom: 1px solid var(--alit-line);
+    }
+    .alit-drawer-kicker {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+        font-weight: 700;
+        color: var(--alit-muted);
+    }
+    .alit-drawer-title {
+        margin: 2px 0 0;
+        font-size: 20px;
+        font-weight: 800;
+        letter-spacing: -0.01em;
+        color: var(--alit-ink);
+    }
+    .alit-drawer-body {
+        flex: 1;
+        overflow-y: auto;
+        padding: 14px 18px 28px;
+    }
+    .alit-drawer-stats {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+        margin-bottom: 12px;
+    }
+    .alit-stat {
+        background: var(--alit-card);
+        border: 1px solid var(--alit-line);
+        border-radius: 12px;
+        padding: 10px 12px;
+
+        .alit-stat-label {
+            font-size: 10.5px;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            font-weight: 700;
+            color: var(--alit-muted);
+        }
+        .alit-stat-value {
+            font-size: 18px;
+            font-weight: 800;
+            color: var(--alit-ink);
+            font-variant-numeric: tabular-nums;
+        }
+    }
+    .alit-drawer-tools {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 10px;
+        flex-wrap: wrap;
+    }
+    .alit-tr {
+        background: var(--alit-card);
+        border: 1px solid var(--alit-line);
+        border-radius: 12px;
+        margin-bottom: 8px;
+        overflow: hidden;
+
+        &.open {
+            border-color: var(--alit-accent-btn);
+        }
+    }
+    .alit-tr-head {
+        display: grid;
+        grid-template-columns: 16px minmax(0, 1.3fr) auto auto auto auto;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        border: 0;
+        background: transparent;
+        color: var(--alit-ink);
+        text-align: left;
+        padding: 10px 12px;
+        cursor: pointer;
+
+        &:hover {
+            background: var(--alit-row-hover);
+        }
+    }
+    .alit-tr-ref {
+        display: block;
+        font-weight: 700;
+        color: var(--alit-ink);
+    }
+    .alit-tr-time {
+        display: block;
+        font-size: 11.5px;
+        color: var(--alit-muted);
+    }
+    .alit-tr-route {
+        white-space: nowrap;
+        color: var(--alit-muted);
+    }
+    .alit-tr-meta {
+        font-size: 12px;
+        color: var(--alit-muted);
+        white-space: nowrap;
+    }
+    .alit-tr-value {
+        font-weight: 800;
+        font-variant-numeric: tabular-nums;
+        text-align: right;
+        color: var(--alit-ink);
+    }
+    // sales-price total, shown next to the cost total
+    .alit-tr-sale {
+        color: var(--alit-accent);
+    }
+    .alit-tr-body {
+        border-top: 1px solid var(--alit-line-soft);
+        padding: 6px 12px 12px;
+
+        .alit-table {
+            th,
+            td {
+                padding: 6px 6px;
+            }
+        }
+    }
+    .alit-tr-actions {
+        margin-top: 8px;
+    }
+    .alit-tr-body .fa-exclamation-triangle {
+        color: var(--alit-warn-ink);
+        margin-left: 4px;
+    }
+}
+
+@keyframes alit-fade {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+@keyframes alit-slide {
+    from {
+        transform: translateX(36px);
+        opacity: 0.6;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
