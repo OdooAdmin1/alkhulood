@@ -1,0 +1,62 @@
+# Al Khulood custom addons - local Odoo 19 stack.
+# Scoped to its own compose project ("al-khulood-sweets") so it can never touch
+# the foodcitydemo / erpcsp-* / backend-* stacks. Always drive it from this folder.
+name: al-khulood-sweets
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: al-khulood-sweets-db
+    environment:
+      POSTGRES_USER: odoo
+      POSTGRES_PASSWORD: odoo
+      POSTGRES_DB: postgres            # Odoo creates its own DBs; this is just the bootstrap one
+      PGDATA: /var/lib/postgresql/data/pgdata
+    command:
+      - postgres
+      - -c
+      - shared_buffers=128MB
+      - -c
+      - effective_cache_size=384MB
+      - -c
+      - maintenance_work_mem=48MB
+      - -c
+      - work_mem=4MB
+      - -c
+      - max_connections=40
+      - -c
+      - max_parallel_workers_per_gather=0
+      - -c
+      - max_parallel_workers=0
+    volumes:
+      - al-khulood-sweets-db-data:/var/lib/postgresql/data
+    shm_size: 128mb
+    mem_limit: 320m
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U odoo -d postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped
+
+  odoo:
+    image: odoo:19
+    container_name: al-khulood-sweets-odoo
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8070:8069"                    # web UI  -> http://localhost:8070
+      - "8073:8072"                    # longpolling / websocket (chatter live updates)
+    volumes:
+      - ./config/odoo.conf:/etc/odoo/odoo.conf:ro
+      - .:/mnt/extra-addons           # this repo: every module folder here is a custom addon
+      - al-khulood-sweets-odoo-data:/var/lib/odoo   # filestore: attachments, images, assets cache
+    command: ["odoo", "-c", "/etc/odoo/odoo.conf"]
+    mem_limit: 1152m
+    restart: unless-stopped
+
+volumes:
+  al-khulood-sweets-odoo-data:
+  al-khulood-sweets-db-data:

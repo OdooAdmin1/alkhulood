@@ -1,0 +1,31 @@
+# Install once with:  pre-commit install
+# Hooks run on the files you stage, so the older addons are only touched when
+# you actually edit them. To sweep everything at once: pre-commit run -a
+exclude: |
+  (?x)^(
+    web_enterprise_community_responsive_theme/.*
+  )$
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: \.csv$
+      - id: end-of-file-fixer
+        exclude: \.csv$
+      - id: mixed-line-ending
+        args: [--fix=lf]
+      - id: check-merge-conflict
+      - id: check-yaml
+      - id: check-xml
+      - id: check-added-large-files
+        args: [--maxkb=2048]
+      - id: check-case-conflict
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.6
+    hooks:
+      - id: ruff-check
+        args: [--fix]
+      - id: ruff-format

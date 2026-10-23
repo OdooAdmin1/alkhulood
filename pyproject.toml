@@ -1,0 +1,46 @@
+# Tooling config for the Al Khulood / Amwal custom Odoo 19 addons.
+# There is no Python package here: this file only configures ruff.
+
+[tool.ruff]
+target-version = "py312"          # the odoo:19 image ships Python 3.12
+line-length = 120
+extend-exclude = [
+    "web_enterprise_community_responsive_theme",   # third-party, not ours to lint
+    "__pycache__",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # pyflakes
+    "I",      # import order
+    "UP",     # pyupgrade
+    "B",      # bugbear
+    "C4",     # comprehensions
+    "RUF",    # ruff's own rules
+]
+ignore = [
+    "E501",   # long lines: a few Odoo domains and SQL strings run past the limit
+    "B904",   # `raise ... from err` inside except: Odoo's own style does not do this
+    "UP009",  # `# -*- coding: utf-8 -*-`: still the convention in Odoo addons
+    "UP031",  # printf formatting: `_("...") % x` is how Odoo keeps strings translatable
+    "RUF012",  # mutable class attributes: Odoo models use plain lists (_sql_constraints, ...)
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Odoo reads the manifest as a bare dict literal and the package __init__ files
+# exist only to import submodules.
+"**/__manifest__.py" = ["B018"]
+"**/__init__.py" = ["F401"]
+# Tests lean on assertions and long fixture literals.
+"**/tests/*.py" = ["B011"]
+
+[tool.ruff.lint.isort]
+known-third-party = ["odoo"]
+section-order = ["future", "standard-library", "third-party", "first-party", "local-folder"]
+
+[tool.ruff.format]
+quote-style = "preserve"          # Odoo code mixes ' and " on purpose; do not churn them
+indent-style = "space"
+line-ending = "lf"
