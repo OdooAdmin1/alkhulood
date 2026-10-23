@@ -10,6 +10,8 @@ Design notes
 * Everything is aggregated in SQL (the move table has ~250k internal rows); no record loops.
 * Value = done quantity x product CURRENT cost. product_product.standard_price is a
   company-dependent jsonb ({"<company_id>": cost}).
+* Sales value = done quantity x the product's CURRENT sales price (product_template.list_price
+  plus the variant attribute extras). Like the cost, it is the price today, not at transfer date.
 * Dates are filtered/grouped in Bahrain time (UTC+3, no DST); stock_move.date is stored in UTC.
 """
 import io
@@ -32,6 +34,7 @@ DETAIL_SORT = {
     'unit_cost': 'd.unit_cost',
     'transfers': 'd.transfers',
     'value': 'd.value',
+    'sale_value': 'd.sale_value',
 }
 
 
@@ -82,6 +85,9 @@ class InternalTransferDashboard(models.AbstractModel):
     def _base_query(self, f):
         """Return (cte_sql, params). The CTE `base` has one row per done internal move
         that crosses warehouses, already filtered."""
+        # everything below is raw SQL, which does not see records still sitting in
+        # the ORM buffer (a transfer validated earlier in the same transaction)
+        self.env.flush_all()
         params = {
             'lang': self.env.lang or 'en_US',
             'dt_from': datetime.combine(f['date_from'], time.min) - BAHRAIN_OFFSET,
@@ -140,7 +146,9 @@ class InternalTransferDashboard(models.AbstractModel):
                    ld.warehouse_id AS dst_wh,
                    sm.quantity AS qty,
                    COALESCE((pp.standard_price ->> sm.company_id::text)::numeric, 0) AS unit_cost,
-                   sm.quantity * COALESCE((pp.standard_price ->> sm.company_id::text)::numeric, 0) AS value
+                   sm.quantity * COALESCE((pp.standard_price ->> sm.company_id::text)::numeric, 0) AS value,
+                   COALESCE(pt.list_price, 0) + COALESCE(px.price_extra, 0) AS unit_price,
+                   sm.quantity * (COALESCE(pt.list_price, 0) + COALESCE(px.price_extra, 0)) AS sale_value
               FROM stock_move sm
               JOIN loc_wh ls ON ls.location_id = sm.location_id
               JOIN loc_wh ld ON ld.location_id = sm.location_dest_id
@@ -148,6 +156,14 @@ class InternalTransferDashboard(models.AbstractModel):
               JOIN product_template pt ON pt.id = pp.product_tmpl_id
               JOIN product_category pc ON pc.id = pt.categ_id
               JOIN uom_uom uu ON uu.id = pt.uom_id
+              LEFT JOIN LATERAL (
+                    -- sales price of the variant = template price + its attribute extras
+                    SELECT SUM(ptav.price_extra) AS price_extra
+                      FROM product_variant_combination pvc
+                      JOIN product_template_attribute_value ptav
+                        ON ptav.id = pvc.product_template_attribute_value_id
+                     WHERE pvc.product_product_id = pp.id
+              ) px ON TRUE
              WHERE __WHERE__
         )
         """.replace('__WHERE__', " AND ".join(where))
@@ -160,7 +176,7 @@ class InternalTransferDashboard(models.AbstractModel):
         query = cte + """
         SELECT d.product_id, d.product_name, d.default_code, d.categ_name, d.uom_name,
                d.src_wh, d.dst_wh, ws.code AS src_code, wd.code AS dst_code,
-               d.qty, d.unit_cost, d.transfers, d.value,
+               d.qty, d.unit_cost, d.transfers, d.value, d.sale_value,
                COUNT(*) OVER () AS total_rows
           FROM (
                 SELECT product_id, product_name, default_code, categ_name, uom_name,
@@ -168,7 +184,8 @@ class InternalTransferDashboard(models.AbstractModel):
                        SUM(qty) AS qty,
                        MAX(unit_cost) AS unit_cost,
                        COUNT(DISTINCT transfer_key) AS transfers,
-                       SUM(value) AS value
+                       SUM(value) AS value,
+                       SUM(sale_value) AS sale_value
                   FROM base
                  GROUP BY product_id, product_name, default_code, categ_name, uom_name, src_wh, dst_wh
                ) d
@@ -231,31 +248,39 @@ class InternalTransferDashboard(models.AbstractModel):
         # KPIs + data health in one pass
         cr.execute(cte + """
             SELECT COALESCE(SUM(value), 0) AS total_value,
+                   COALESCE(SUM(sale_value), 0) AS total_sale_value,
                    COUNT(DISTINCT transfer_key) AS transfers,
                    COUNT(*) AS lines,
                    COUNT(DISTINCT product_id) AS products,
                    COUNT(*) FILTER (WHERE uom_mismatch) AS uom_mismatch,
-                   COUNT(*) FILTER (WHERE unit_cost = 0) AS zero_cost
+                   COUNT(*) FILTER (WHERE unit_cost = 0) AS zero_cost,
+                   COUNT(*) FILTER (WHERE unit_price = 0) AS zero_price
               FROM base
         """, params)
         k = cr.dictfetchone()
+        total_value = float(k['total_value'])
+        total_sale_value = float(k['total_sale_value'])
         kpis = {
-            'total_value': float(k['total_value']),
+            'total_value': total_value,
+            'total_sale_value': total_sale_value,
+            'margin': total_sale_value - total_value,
             'transfers': k['transfers'],
             'lines': k['lines'],
             'products': k['products'],
             'uom_mismatch': k['uom_mismatch'],
             'zero_cost': k['zero_cost'],
+            'zero_price': k['zero_price'],
         }
 
         # route matrix source
         cr.execute(cte + """
-            SELECT src_wh, dst_wh, SUM(value) AS value,
+            SELECT src_wh, dst_wh, SUM(value) AS value, SUM(sale_value) AS sale_value,
                    COUNT(DISTINCT transfer_key) AS transfers, COUNT(*) AS lines
               FROM base GROUP BY src_wh, dst_wh ORDER BY SUM(value) DESC
         """, params)
         routes = [{
             'src_id': r['src_wh'], 'dst_id': r['dst_wh'], 'value': float(r['value']),
+            'sale_value': float(r['sale_value']),
             'transfers': r['transfers'], 'lines': r['lines'],
         } for r in cr.dictfetchall()]
 
@@ -263,18 +288,20 @@ class InternalTransferDashboard(models.AbstractModel):
         tparams = dict(params, grain=grain)
         cr.execute(cte + """
             SELECT date_trunc(%(grain)s, move_date + interval '3 hours')::date AS period,
-                   SUM(value) AS value, COUNT(DISTINCT transfer_key) AS transfers
+                   SUM(value) AS value, SUM(sale_value) AS sale_value,
+                   COUNT(DISTINCT transfer_key) AS transfers
               FROM base GROUP BY 1 ORDER BY 1
         """, tparams)
         trend = [{
             'period': fields.Date.to_string(r['period']), 'value': float(r['value']),
+            'sale_value': float(r['sale_value']),
             'transfers': r['transfers'],
         } for r in cr.dictfetchall()]
 
         # top products
         cr.execute(cte + """
             SELECT product_id, product_name, default_code, uom_name,
-                   SUM(value) AS value, SUM(qty) AS qty
+                   SUM(value) AS value, SUM(sale_value) AS sale_value, SUM(qty) AS qty
               FROM base
              GROUP BY product_id, product_name, default_code, uom_name
              ORDER BY SUM(value) DESC, product_name
@@ -282,7 +309,8 @@ class InternalTransferDashboard(models.AbstractModel):
         """, params)
         top_products = [{
             'product_id': r['product_id'], 'name': r['product_name'], 'code': r['default_code'] or '',
-            'uom': r['uom_name'], 'value': float(r['value']), 'qty': float(r['qty']),
+            'uom': r['uom_name'], 'value': float(r['value']),
+            'sale_value': float(r['sale_value']), 'qty': float(r['qty']),
         } for r in cr.dictfetchall()]
 
         # detail table (product x route), paginated in SQL
@@ -295,6 +323,7 @@ class InternalTransferDashboard(models.AbstractModel):
                 'src_code': r['src_code'], 'dst_code': r['dst_code'],
                 'qty': float(r['qty']), 'unit_cost': float(r['unit_cost']),
                 'transfers': r['transfers'], 'value': float(r['value']),
+                'sale_value': float(r['sale_value']),
             } for r in rows],
             'total': rows[0]['total_rows'] if rows else 0,
             'page': page,
@@ -334,7 +363,7 @@ class InternalTransferDashboard(models.AbstractModel):
         result = {
             'date_from': fields.Date.to_string(f['date_from']),
             'date_to': fields.Date.to_string(f['date_to']),
-            'totals': {'value': 0.0, 'transfers': 0, 'lines': 0},
+            'totals': {'value': 0.0, 'sale_value': 0.0, 'transfers': 0, 'lines': 0},
             'transfers': [],
             'truncated': False,
             'shown_lines': 0,
@@ -346,17 +375,23 @@ class InternalTransferDashboard(models.AbstractModel):
         cr = self.env.cr
         cr.execute(cte + """
             SELECT COALESCE(SUM(value), 0) AS total_value,
+                   COALESCE(SUM(sale_value), 0) AS total_sale_value,
                    COUNT(DISTINCT transfer_key) AS transfers,
                    COUNT(*) AS lines
               FROM base
         """, params)
         t = cr.dictfetchone()
-        result['totals'] = {'value': float(t['total_value']), 'transfers': t['transfers'], 'lines': t['lines']}
+        result['totals'] = {
+            'value': float(t['total_value']),
+            'sale_value': float(t['total_sale_value']),
+            'transfers': t['transfers'],
+            'lines': t['lines'],
+        }
 
         cr.execute(cte + """
             SELECT b.transfer_key, b.picking_id, b.reference, b.move_date, b.move_id,
                    b.product_name, b.default_code, b.uom_name, b.uom_mismatch,
-                   b.qty, b.unit_cost, b.value,
+                   b.qty, b.unit_cost, b.value, b.sale_value,
                    b.src_wh, b.dst_wh, ws.code AS src_code, wd.code AS dst_code
               FROM base b
               JOIN stock_warehouse ws ON ws.id = b.src_wh
@@ -382,16 +417,20 @@ class InternalTransferDashboard(models.AbstractModel):
                     'src_id': r['src_wh'], 'dst_id': r['dst_wh'],
                     'src_code': r['src_code'], 'dst_code': r['dst_code'],
                     'value': 0.0,
+                    'sale_value': 0.0,
                     'line_count': 0,
                     'lines': [],
                 }
             value = float(r['value'])
+            sale_value = float(r['sale_value'])
             tr['value'] += value
+            tr['sale_value'] += sale_value
             tr['line_count'] += 1
             tr['lines'].append({
                 'product': r['product_name'], 'code': r['default_code'] or '',
                 'uom': r['uom_name'], 'uom_mismatch': bool(r['uom_mismatch']),
                 'qty': float(r['qty']), 'unit_cost': float(r['unit_cost']), 'value': value,
+                'sale_value': sale_value,
             })
         for tr in transfers.values():
             tr['lines'].sort(key=lambda line: (-line['value'], line['product']))
@@ -417,12 +456,14 @@ class InternalTransferDashboard(models.AbstractModel):
         wh_name = {w.id: w.name for w in warehouses}
 
         cr.execute(cte + """
-            SELECT src_wh, dst_wh, SUM(value) AS value, COUNT(DISTINCT transfer_key) AS transfers
+            SELECT src_wh, dst_wh, SUM(value) AS value, SUM(sale_value) AS sale_value,
+                   COUNT(DISTINCT transfer_key) AS transfers
               FROM base GROUP BY src_wh, dst_wh
         """, params)
         routes = cr.dictfetchall()
         cr.execute(cte + """
             SELECT COALESCE(SUM(value), 0) AS total_value,
+                   COALESCE(SUM(sale_value), 0) AS total_sale_value,
                    COUNT(DISTINCT transfer_key) AS transfers,
                    COUNT(DISTINCT product_id) AS products,
                    COUNT(*) AS lines
@@ -434,7 +475,7 @@ class InternalTransferDashboard(models.AbstractModel):
         cr.execute(cte + """
             SELECT b.move_date, b.reference, b.product_name, b.default_code, b.categ_name,
                    ws.code AS src_code, wd.code AS dst_code,
-                   b.qty, b.uom_name, b.unit_cost, b.value
+                   b.qty, b.uom_name, b.unit_cost, b.value, b.sale_value
               FROM base b
               JOIN stock_warehouse ws ON ws.id = b.src_wh
               JOIN stock_warehouse wd ON wd.id = b.dst_wh
@@ -482,26 +523,31 @@ class InternalTransferDashboard(models.AbstractModel):
         cat_names = self.env['product.category'].browse(f['categ_ids']).exists().mapped('complete_name')
         ws.write(4, 1, '%s / %s' % (', '.join(cat_names) or 'All', f['search'] or '-'))
         ws.write(5, 0, 'Valuation', fmt['warn'])
-        ws.write(5, 1, "Quantity x the product's CURRENT cost (%s), not the cost at transfer date." % currency.name, fmt['warn'])
+        ws.write(5, 1, "Quantity x the product's CURRENT cost and CURRENT sales price (%s), "
+                       "not the values at transfer date." % currency.name, fmt['warn'])
         ws.write(6, 0, 'Generated')
         ws.write(6, 1, (fields.Datetime.now() + BAHRAIN_OFFSET).strftime('%Y-%m-%d %H:%M') + ' (Bahrain)')
 
-        ws.write(8, 0, 'Total value (%s)' % currency.name, fmt['bold'])
+        ws.write(8, 0, 'Total cost value (%s)' % currency.name, fmt['bold'])
         ws.write_number(8, 1, float(k['total_value']), fmt['money_bold'])
-        ws.write(9, 0, 'Transfers', fmt['bold'])
-        ws.write_number(9, 1, k['transfers'], fmt['int'])
-        ws.write(10, 0, 'Products moved', fmt['bold'])
-        ws.write_number(10, 1, k['products'], fmt['int'])
-        ws.write(11, 0, 'Move lines', fmt['bold'])
-        ws.write_number(11, 1, k['lines'], fmt['int'])
+        ws.write(9, 0, 'Total sales value (%s)' % currency.name, fmt['bold'])
+        ws.write_number(9, 1, float(k['total_sale_value']), fmt['money_bold'])
+        ws.write(10, 0, 'Margin (sales - cost)', fmt['bold'])
+        ws.write_number(10, 1, float(k['total_sale_value']) - float(k['total_value']), fmt['money_bold'])
+        ws.write(11, 0, 'Transfers', fmt['bold'])
+        ws.write_number(11, 1, k['transfers'], fmt['int'])
+        ws.write(12, 0, 'Products moved', fmt['bold'])
+        ws.write_number(12, 1, k['products'], fmt['int'])
+        ws.write(13, 0, 'Move lines', fmt['bold'])
+        ws.write_number(13, 1, k['lines'], fmt['int'])
 
         senders = sorted({r['src_wh'] for r in routes},
                          key=lambda i: -sum(float(r['value']) for r in routes if r['src_wh'] == i))
         receivers = sorted({r['dst_wh'] for r in routes},
                            key=lambda i: -sum(float(r['value']) for r in routes if r['dst_wh'] == i))
         cell = {(r['src_wh'], r['dst_wh']): float(r['value']) for r in routes}
-        top = 14
-        ws.write(top - 1, 0, 'Value matrix (%s): rows = From, columns = To' % currency.name, fmt['bold'])
+        top = 16
+        ws.write(top - 1, 0, 'Cost value matrix (%s): rows = From, columns = To' % currency.name, fmt['bold'])
         ws.write(top, 0, 'From \\ To', fmt['head'])
         for j, d in enumerate(receivers, start=1):
             ws.write(top, j, wh_code.get(d, d), fmt['head'])
@@ -530,9 +576,10 @@ class InternalTransferDashboard(models.AbstractModel):
         # ---- By product & route
         wd_ = wb.add_worksheet('By Product & Route')
         heads = ['Product', 'Internal Ref', 'Category', 'From', 'To', 'UoM', 'Quantity',
-                 'Unit cost (current)', 'Transfers', 'Value (%s)' % currency.name]
-        widths = [42, 16, 26, 8, 8, 9, 12, 14, 10, 16]
-        for c, (h, w) in enumerate(zip(heads, widths)):
+                 'Unit cost (current)', 'Transfers',
+                 'Cost value (%s)' % currency.name, 'Sales value (%s)' % currency.name]
+        widths = [42, 16, 26, 8, 8, 9, 12, 14, 10, 16, 16]
+        for c, (h, w) in enumerate(zip(heads, widths, strict=True)):
             wd_.write(0, c, h, fmt['head'])
             wd_.set_column(c, c, w)
         for r, row in enumerate(detail, start=1):
@@ -546,15 +593,17 @@ class InternalTransferDashboard(models.AbstractModel):
             wd_.write_number(r, 7, float(row['unit_cost']), fmt['money'])
             wd_.write_number(r, 8, row['transfers'], fmt['int'])
             wd_.write_number(r, 9, float(row['value']), fmt['money'])
+            wd_.write_number(r, 10, float(row['sale_value']), fmt['money'])
         wd_.autofilter(0, 0, max(len(detail), 1), len(heads) - 1)
         wd_.freeze_panes(1, 1)
 
         # ---- Transfer lines
         wl = wb.add_worksheet('Transfer Lines')
         heads = ['Date (Bahrain)', 'Reference', 'Product', 'Internal Ref', 'Category', 'From', 'To',
-                 'Quantity', 'UoM', 'Unit cost (current)', 'Value (%s)' % currency.name]
-        widths = [18, 18, 42, 16, 26, 8, 8, 12, 9, 14, 16]
-        for c, (h, w) in enumerate(zip(heads, widths)):
+                 'Quantity', 'UoM', 'Unit cost (current)',
+                 'Cost value (%s)' % currency.name, 'Sales value (%s)' % currency.name]
+        widths = [18, 18, 42, 16, 26, 8, 8, 12, 9, 14, 16, 16]
+        for c, (h, w) in enumerate(zip(heads, widths, strict=True)):
             wl.write(0, c, h, fmt['head'])
             wl.set_column(c, c, w)
         for r, row in enumerate(lines, start=1):
@@ -569,6 +618,7 @@ class InternalTransferDashboard(models.AbstractModel):
             wl.write(r, 8, row['uom_name'] or '', fmt['text'])
             wl.write_number(r, 9, float(row['unit_cost']), fmt['money'])
             wl.write_number(r, 10, float(row['value']), fmt['money'])
+            wl.write_number(r, 11, float(row['sale_value']), fmt['money'])
         if truncated:
             wl.write(len(lines) + 2, 0,
                      'Only the latest %d lines are listed. Narrow the filters to see the rest; '
