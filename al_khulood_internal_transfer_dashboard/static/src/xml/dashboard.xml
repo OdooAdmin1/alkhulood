@@ -118,8 +118,9 @@
                             <!-- Data health notes -->
                             <div class="alit-alert alit-alert-info">
                                 <i class="fa fa-info-circle"/>
-                                Value = quantity moved &#215; the product's <b>current</b> cost
-                                (<t t-esc="options.currency.name"/>), not the cost on the transfer date.
+                                Cost value = quantity moved &#215; the product's <b>current</b> cost;
+                                sales value = quantity moved &#215; its <b>current</b> sales price
+                                (<t t-esc="options.currency.name"/>). Neither is the value on the transfer date.
                             </div>
                             <div class="alit-alert alit-alert-warn" t-if="state.data.kpis.uom_mismatch">
                                 <i class="fa fa-exclamation-triangle"/>
@@ -129,19 +130,35 @@
                             <div class="alit-alert alit-alert-warn" t-if="state.data.kpis.zero_cost">
                                 <i class="fa fa-exclamation-triangle"/>
                                 <t t-esc="fmtInt(state.data.kpis.zero_cost)"/> move line(s) are for products with a zero cost,
-                                so they add quantity but no value.
+                                so they add quantity but no cost value.
+                            </div>
+                            <div class="alit-alert alit-alert-warn" t-if="state.data.kpis.zero_price">
+                                <i class="fa fa-exclamation-triangle"/>
+                                <t t-esc="fmtInt(state.data.kpis.zero_price)"/> move line(s) are for products with no sales
+                                price set, so they add quantity but no sales value.
                             </div>
 
                             <!-- KPI cards -->
                             <div class="alit-kpis">
                                 <div class="alit-card alit-kpi alit-kpi-accent">
-                                    <div class="alit-kpi-label">Total value transferred</div>
+                                    <div class="alit-kpi-label">Total value transferred (cost)</div>
                                     <div class="alit-kpi-value">
                                         <span class="alit-kpi-cur" t-esc="currencySymbol"/>
                                         <t t-esc="fmtMoney(state.data.kpis.total_value)"/>
                                     </div>
                                     <div class="alit-kpi-foot">
                                         <t t-esc="state.filters.date_from"/> → <t t-esc="state.filters.date_to"/>
+                                    </div>
+                                </div>
+                                <div class="alit-card alit-kpi alit-kpi-accent">
+                                    <div class="alit-kpi-label">Total value transferred (sales price)</div>
+                                    <div class="alit-kpi-value">
+                                        <span class="alit-kpi-cur" t-esc="currencySymbol"/>
+                                        <t t-esc="fmtMoney(state.data.kpis.total_sale_value)"/>
+                                    </div>
+                                    <div class="alit-kpi-foot">
+                                        margin <t t-esc="currencySymbol"/><t t-esc="fmtMoney(state.data.kpis.margin)"/>
+                                        over cost
                                     </div>
                                 </div>
                                 <div class="alit-card alit-kpi">
@@ -356,7 +373,8 @@
                                                     <th class="num sortable" t-on-click="() => this.sortBy('qty')">Quantity <i t-att-class="sortIcon('qty')"/></th>
                                                     <th class="num sortable" t-on-click="() => this.sortBy('unit_cost')">Unit cost <i t-att-class="sortIcon('unit_cost')"/></th>
                                                     <th class="num sortable" t-on-click="() => this.sortBy('transfers')">Transfers <i t-att-class="sortIcon('transfers')"/></th>
-                                                    <th class="num sortable" t-on-click="() => this.sortBy('value')">Value <i t-att-class="sortIcon('value')"/></th>
+                                                    <th class="num sortable" t-on-click="() => this.sortBy('value')">Cost value <i t-att-class="sortIcon('value')"/></th>
+                                                    <th class="num sortable" t-on-click="() => this.sortBy('sale_value')">Sales value <i t-att-class="sortIcon('sale_value')"/></th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -375,6 +393,7 @@
                                                         <td class="num alit-muted" t-esc="fmtMoney(row.unit_cost)"/>
                                                         <td class="num" t-esc="fmtInt(row.transfers)"/>
                                                         <td class="num alit-strong" t-esc="fmtMoney(row.value)"/>
+                                                        <td class="num alit-strong" t-esc="fmtMoney(row.sale_value)"/>
                                                     </tr>
                                                 </t>
                                             </tbody>
@@ -415,9 +434,15 @@
                         <t t-elif="state.drawer.data">
                             <div class="alit-drawer-stats">
                                 <div class="alit-stat">
-                                    <div class="alit-stat-label">Value</div>
+                                    <div class="alit-stat-label">Cost value</div>
                                     <div class="alit-stat-value">
                                         <t t-esc="currencySymbol"/> <t t-esc="fmtMoney(state.drawer.data.totals.value)"/>
+                                    </div>
+                                </div>
+                                <div class="alit-stat">
+                                    <div class="alit-stat-label">Sales value</div>
+                                    <div class="alit-stat-value">
+                                        <t t-esc="currencySymbol"/> <t t-esc="fmtMoney(state.drawer.data.totals.sale_value)"/>
                                     </div>
                                 </div>
                                 <div class="alit-stat">
@@ -469,7 +494,8 @@
                                                 <span class="alit-pill alt" t-att-title="whName(trf.dst_id)" t-esc="trf.dst_code"/>
                                             </span>
                                             <span class="alit-tr-meta"><t t-esc="trf.line_count"/> items</span>
-                                            <span class="alit-tr-value" t-esc="fmtMoney(trf.value)"/>
+                                            <span class="alit-tr-value" t-att-title="'Cost value'" t-esc="fmtMoney(trf.value)"/>
+                                            <span class="alit-tr-value alit-tr-sale" t-att-title="'Sales value'" t-esc="fmtMoney(trf.sale_value)"/>
                                         </button>
                                         <div class="alit-tr-body" t-if="isExpanded(trf.key)">
                                             <table class="alit-table">
@@ -478,7 +504,8 @@
                                                         <th>Product</th>
                                                         <th class="num">Quantity</th>
                                                         <th class="num">Unit cost</th>
-                                                        <th class="num">Value</th>
+                                                        <th class="num">Cost value</th>
+                                                        <th class="num">Sales value</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
@@ -496,6 +523,7 @@
                                                             </td>
                                                             <td class="num alit-muted" t-esc="fmtMoney(line.unit_cost)"/>
                                                             <td class="num alit-strong" t-esc="fmtMoney(line.value)"/>
+                                                            <td class="num alit-strong" t-esc="fmtMoney(line.sale_value)"/>
                                                         </tr>
                                                     </t>
                                                 </tbody>
