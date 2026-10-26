@@ -52,6 +52,7 @@ services:
     volumes:
       - ./config/odoo.conf:/etc/odoo/odoo.conf:ro
       - .:/mnt/extra-addons           # this repo: every module folder here is a custom addon
+      - ../enterprise:/mnt/enterprise:ro    # Odoo 19 Enterprise source, read-only
       - al-khulood-sweets-odoo-data:/var/lib/odoo   # filestore: attachments, images, assets cache
     command: ["odoo", "-c", "/etc/odoo/odoo.conf"]
     mem_limit: 1152m
