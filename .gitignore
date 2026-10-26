@@ -9,7 +9,8 @@ venv/
 # the container keeps the filestore in a named volume; these only appear when
 # someone runs Odoo straight on the host
 .odoo/
-data/
+# root-anchored: an Odoo module's own data/ directory is source, not runtime
+/data/
 filestore/
 sessions/
 *.log
