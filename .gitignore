@@ -1,0 +1,36 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# ---- Odoo runtime ----
+# the container keeps the filestore in a named volume; these only appear when
+# someone runs Odoo straight on the host
+.odoo/
+# root-anchored: an Odoo module's own data/ directory is source, not runtime
+/data/
+filestore/
+sessions/
+*.log
+odoo.conf.local
+
+# ---- third-party addons kept on disk but not vendored here ----
+# proprietary theme (Badirra, OPL-1): install it from the vendor, not from git
+/web_enterprise_community_responsive_theme/
+
+# ---- tooling ----
+.ruff_cache/
+.pytest_cache/
+.mypy_cache/
+node_modules/
+
+# ---- editors / OS ----
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
+.local-dev-credentials

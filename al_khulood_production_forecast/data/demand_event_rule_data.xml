@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+      One row per occasion instead of one row per occasion per year.
+
+      anchor_month / anchor_day are read in the rule's OWN calendar, so a Hijri
+      rule names a Hijri month. needs_sighting marks the four anchors whose real
+      date is announced rather than calculated; everything counted from inside a
+      month inherits whatever that month start turned out to be.
+    -->
+
+    <!-- ===================== Islamic calendar ====================== -->
+    <record id="rule_ramadan" model="al.demand.event.rule">
+        <field name="name">Ramadan</field>
+        <field name="event_type">ramadan</field>
+        <field name="calendar">hijri</field>
+        <field name="anchor_month">9</field>
+        <field name="anchor_day">1</field>
+        <field name="duration_days">29</field>
+        <field name="needs_sighting" eval="True"/>
+    </record>
+
+    <record id="rule_eid_fitr" model="al.demand.event.rule">
+        <field name="name">Eid al-Fitr</field>
+        <field name="event_type">eid_fitr</field>
+        <field name="calendar">hijri</field>
+        <field name="anchor_month">10</field>
+        <field name="anchor_day">1</field>
+        <field name="duration_days">3</field>
+        <field name="lead_days">3</field>
+        <field name="needs_sighting" eval="True"/>
+    </record>
+
+    <record id="rule_eid_adha" model="al.demand.event.rule">
+        <field name="name">Eid al-Adha</field>
+        <field name="event_type">eid_adha</field>
+        <field name="calendar">hijri</field>
+        <field name="anchor_month">12</field>
+        <field name="anchor_day">10</field>
+        <field name="duration_days">3</field>
+        <field name="lead_days">2</field>
+        <field name="needs_sighting" eval="True"/>
+    </record>
+
+    <record id="rule_muharram" model="al.demand.event.rule">
+        <field name="name">Muharram</field>
+        <field name="event_type">muharram</field>
+        <field name="calendar">hijri</field>
+        <field name="anchor_month">1</field>
+        <field name="anchor_day">1</field>
+        <field name="duration_days">12</field>
+        <field name="needs_sighting" eval="True"/>
+    </record>
+
+    <!-- Counted from the start of Muharram, so it needs no sighting of its
+         own: shift the month and Ashura shifts with it. -->
+    <record id="rule_ashura" model="al.demand.event.rule">
+        <field name="name">Ashura</field>
+        <field name="event_type">ashura</field>
+        <field name="calendar">hijri</field>
+        <field name="anchor_month">1</field>
+        <field name="anchor_day">10</field>
+        <field name="duration_days">1</field>
+        <field name="closed" eval="True"/>
+    </record>
+
+    <record id="rule_hijri_new_year" model="al.demand.event.rule">
+        <field name="name">Hijri New Year</field>
+        <field name="event_type">hijri_new_year</field>
+        <field name="calendar">hijri</field>
+        <field name="anchor_month">1</field>
+        <field name="anchor_day">1</field>
+        <field name="duration_days">1</field>
+        <!-- Muharram day 1 already carries this period; kept off by default so
+             it does not stack a second factor on the same day. -->
+        <field name="active" eval="False"/>
+    </record>
+
+    <!-- ==================== Gregorian calendar ===================== -->
+    <record id="rule_national_day" model="al.demand.event.rule">
+        <field name="name">Bahrain National Day</field>
+        <field name="event_type">national_day</field>
+        <field name="calendar">gregorian</field>
+        <field name="anchor_month">12</field>
+        <field name="anchor_day">16</field>
+        <field name="duration_days">2</field>
+        <field name="lead_days">2</field>
+    </record>
+
+    <record id="rule_new_year" model="al.demand.event.rule">
+        <field name="name">New Year</field>
+        <field name="event_type">new_year</field>
+        <field name="calendar">gregorian</field>
+        <field name="anchor_month">1</field>
+        <field name="anchor_day">1</field>
+        <field name="duration_days">1</field>
+        <field name="lead_days">2</field>
+    </record>
+
+    <record id="rule_valentine" model="al.demand.event.rule">
+        <field name="name">Valentine's Day</field>
+        <field name="event_type">valentine</field>
+        <field name="calendar">gregorian</field>
+        <field name="anchor_month">2</field>
+        <field name="anchor_day">14</field>
+        <field name="duration_days">1</field>
+        <field name="lead_days">1</field>
+    </record>
+
+    <record id="rule_mother_day" model="al.demand.event.rule">
+        <field name="name">Mother's Day</field>
+        <field name="event_type">mother_day</field>
+        <field name="calendar">gregorian</field>
+        <field name="anchor_month">3</field>
+        <field name="anchor_day">21</field>
+        <field name="duration_days">1</field>
+        <field name="lead_days">1</field>
+    </record>
+
+    <!-- Top up the rolling window on install and on every upgrade, then once a
+         month, so the calendar can never run out the way the typed list did. -->
+    <function model="al.demand.event.rule" name="_seed_rules_and_generate"/>
+
+    <record id="cron_demand_event_top_up" model="ir.cron">
+        <field name="name">Demand Forecast: extend the occasion calendar</field>
+        <field name="model_id" ref="model_al_demand_event_rule"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_top_up()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">months</field>
+        <field name="active" eval="True"/>
+    </record>
+
+</odoo>

@@ -1,0 +1,16 @@
+# The addons and the compose stack run inside Linux containers, so everything
+# stays LF in the repo and in the working tree regardless of the Windows default.
+* text=auto eol=lf
+
+# Binary assets: never touch them.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.xlsx binary
+*.zip binary
