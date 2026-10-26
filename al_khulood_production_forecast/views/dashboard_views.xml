@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="action_al_production_forecast" model="ir.actions.client">
+        <field name="name">Production Forecast</field>
+        <field name="tag">al_production_forecast</field>
+    </record>
+
+    <record id="view_al_demand_event_list" model="ir.ui.view">
+        <field name="name">al.demand.event.list</field>
+        <field name="model">al.demand.event</field>
+        <field name="arch" type="xml">
+            <list string="Demand Events" editable="bottom"
+                  decoration-warning="not confirmed"
+                  decoration-success="suggested_date">
+                <header>
+                    <button name="action_suggest_from_sales" type="object"
+                            string="Recover dates from sales"
+                            groups="stock.group_stock_manager"/>
+                </header>
+                <field name="name"/>
+                <field name="event_type"/>
+                <field name="calendar"/>
+                <field name="date_start"/>
+                <field name="date_end"/>
+                <field name="lead_days"/>
+                <field name="closed" widget="boolean_toggle"/>
+                <field name="confirmed" widget="boolean_toggle"/>
+                <field name="generated" optional="show"/>
+                <field name="rule_id" optional="hide"/>
+                <field name="source_year" optional="hide"/>
+                <field name="suggested_date" optional="show"/>
+                <field name="suggestion_note" optional="hide"/>
+                <button name="action_accept_suggestion" type="object"
+                        string="Accept" icon="fa-check"
+                        invisible="not suggested_date"
+                        groups="stock.group_stock_manager"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_al_demand_event_search" model="ir.ui.view">
+        <field name="name">al.demand.event.search</field>
+        <field name="model">al.demand.event</field>
+        <field name="arch" type="xml">
+            <search string="Demand Events">
+                <field name="name"/>
+                <field name="event_type"/>
+                <filter name="hijri" string="Islamic calendar"
+                        domain="[('calendar','=','hijri')]"/>
+                <filter name="gregorian" string="Gregorian calendar"
+                        domain="[('calendar','=','gregorian')]"/>
+                <separator/>
+                <filter name="unconfirmed" string="Needs confirmation"
+                        domain="[('confirmed','=',False)]"/>
+                <filter name="closed" string="Branches closed"
+                        domain="[('closed','=',True)]"/>
+                <filter name="has_suggestion" string="Has a recovered date"
+                        domain="[('suggested_date','!=',False)]"/>
+                <filter name="generated" string="Generated from a rule"
+                        domain="[('generated','=',True)]"/>
+                <separator/>
+                <filter name="by_type" string="Occasion"
+                        context="{'group_by':'event_type'}"/>
+                <filter name="by_calendar" string="Calendar"
+                        context="{'group_by':'calendar'}"/>
+                <filter name="by_rule" string="Rule"
+                        context="{'group_by':'rule_id'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_al_demand_event" model="ir.actions.act_window">
+        <field name="name">Demand Events</field>
+        <field name="res_model">al.demand.event</field>
+        <field name="view_mode">list</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Set the occasions that move demand</p>
+            <p>Ramadan and the Eids follow the Islamic calendar and move every year.
+               National Day, New Year and Valentine's sit on fixed Gregorian dates.
+               Confirm a date once the moon sighting is announced.</p>
+        </field>
+    </record>
+
+    <!-- ===================== occasion rules ======================== -->
+    <record id="view_al_demand_event_rule_list" model="ir.ui.view">
+        <field name="name">al.demand.event.rule.list</field>
+        <field name="model">al.demand.event.rule</field>
+        <field name="arch" type="xml">
+            <list string="Occasion Rules">
+                <header>
+                    <button name="action_generate" type="object"
+                            string="Extend the calendar"/>
+                </header>
+                <field name="name"/>
+                <field name="event_type"/>
+                <field name="calendar"/>
+                <field name="anchor_month"/>
+                <field name="anchor_day"/>
+                <field name="duration_days"/>
+                <field name="lead_days"/>
+                <field name="closed" widget="boolean_toggle"/>
+                <field name="needs_sighting" widget="boolean_toggle"/>
+                <field name="event_count" string="Occasions"/>
+                <button name="action_view_events" type="object"
+                        string="View" icon="fa-calendar"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_al_demand_event_rule_form" model="ir.ui.view">
+        <field name="name">al.demand.event.rule.form</field>
+        <field name="model">al.demand.event.rule</field>
+        <field name="arch" type="xml">
+            <form string="Occasion Rule">
+                <header>
+                    <button name="action_generate" type="object"
+                            string="Generate occasions" class="btn-primary"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_events" type="object"
+                                class="oe_stat_button" icon="fa-calendar">
+                            <field name="event_count" widget="statinfo"
+                                   string="Occasions"/>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name" placeholder="Eid al-Fitr"/></h1>
+                    </div>
+                    <group>
+                        <group string="Occasion">
+                            <field name="event_type"/>
+                            <field name="calendar"/>
+                            <field name="active" widget="boolean_toggle"/>
+                        </group>
+                        <group string="Anchor">
+                            <field name="anchor_month"/>
+                            <field name="anchor_day"/>
+                            <field name="duration_days"/>
+                            <field name="lead_days"/>
+                        </group>
+                        <group string="Behaviour">
+                            <field name="closed"/>
+                            <field name="needs_sighting"/>
+                        </group>
+                    </group>
+                    <div class="text-muted">
+                        The month and day are counted in this rule's own
+                        calendar, so an Islamic rule names an Islamic month -
+                        Ramadan is month 9, Dhu al-Hijjah is month 12. Tick
+                        <b>needs sighting</b> only when the real date is
+                        announced rather than calculated; those occasions are
+                        generated unconfirmed and wait for a person.
+                    </div>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_al_demand_event_rule" model="ir.actions.act_window">
+        <field name="name">Occasion Rules</field>
+        <field name="res_model">al.demand.event.rule</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">One rule per occasion, not one per year</p>
+            <p>Each rule names a fixed date in its own calendar - Eid al-Fitr is
+               always 1 Shawwal, National Day always 16 December - and the
+               occasions are generated from it, every year, on their own.</p>
+        </field>
+    </record>
+
+    <menuitem id="menu_al_production_forecast"
+              name="Production Forecast"
+              parent="mrp.menu_mrp_reporting"
+              action="action_al_production_forecast"
+              groups="stock.group_stock_user"
+              sequence="90"/>
+
+    <menuitem id="menu_al_demand_event"
+              name="Demand Events (Hijri &amp; Gregorian)"
+              parent="mrp.menu_mrp_configuration"
+              action="action_al_demand_event"
+              groups="stock.group_stock_manager"
+              sequence="95"/>
+
+    <menuitem id="menu_al_demand_event_rule"
+              name="Occasion Rules"
+              parent="mrp.menu_mrp_configuration"
+              action="action_al_demand_event_rule"
+              groups="stock.group_stock_manager"
+              sequence="96"/>
+
+</odoo>

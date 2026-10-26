@@ -1,0 +1,383 @@
+// Al Khulood production forecast - dark green and gold, like the storefronts.
+.alf-root {
+    --alf-green: #14452f;
+    --alf-green-lt: #2d6a4f;
+    --alf-gold: #aa915b;
+    --alf-gold-lt: #f3ecdd;
+    --alf-ink: #1f2328;
+    --alf-muted: #6b7178;
+    --alf-line: #e4e1d9;
+    --alf-bg: #fbf9f4;
+
+    padding: 14px 18px 40px;
+    background: var(--alf-bg);
+    color: var(--alf-ink);
+    height: 100%;
+    overflow: auto;
+    font-size: 13px;
+}
+
+// ------------------------------------------------------------------ header
+.alf-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    border-bottom: 2px solid var(--alf-gold);
+    padding-bottom: 10px;
+    margin-bottom: 14px;
+
+    h2 {
+        margin: 0;
+        color: var(--alf-green);
+        font-weight: 700;
+        font-size: 20px;
+    }
+}
+.alf-sub {
+    color: var(--alf-muted);
+    font-size: 12px;
+}
+.alf-head-nav {
+    display: flex;
+    gap: 6px;
+    flex: 0 0 auto;
+}
+
+.alf-body {
+    display: flex;
+    gap: 18px;
+    align-items: flex-start;
+
+    @media (max-width: 1100px) {
+        flex-direction: column;
+    }
+}
+
+// ---------------------------------------------------------------- calendar
+.alf-cal-pane {
+    flex: 0 0 290px;
+    background: #fff;
+    border: 1px solid var(--alf-line);
+    border-radius: 8px;
+    padding: 10px;
+    position: sticky;
+    top: 8px;
+
+    @media (max-width: 1100px) {
+        position: static;
+        width: 100%;
+        flex: 1 1 auto;
+    }
+}
+.alf-cal-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+.alf-cal-title {
+    text-align: center;
+    line-height: 1.25;
+}
+.alf-cal-month {
+    display: block;
+    font-weight: 700;
+    color: var(--alf-green);
+}
+.alf-cal-hijri {
+    display: block;
+    font-size: 10.5px;
+    font-weight: 600;
+    color: var(--alf-gold);
+}
+.alf-cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 3px;
+}
+.alf-dow {
+    text-align: center;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--alf-muted);
+    padding-bottom: 2px;
+}
+.alf-cell {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    border: 1px solid transparent;
+    border-radius: 5px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    background: #fafafa;
+
+    &:hover { background: var(--alf-gold-lt); }
+
+    .alf-g {
+        font-size: 12px;
+        font-weight: 600;
+        line-height: 1;
+    }
+    .alf-h {
+        font-size: 9px;
+        color: var(--alf-muted);
+        line-height: 1.2;
+    }
+    .alf-dot {
+        position: absolute;
+        bottom: 3px;
+        width: 4px;
+        height: 4px;
+        border-radius: 50%;
+        background: var(--alf-gold);
+    }
+}
+.alf-cell-empty { background: transparent; cursor: default; }
+.alf-cell-weekend { background: #f1f4f2; }
+// Occasions are marked by the dot alone, colour-coded by calendar, so the
+// grid needs no legend to be read.
+.alf-cell-hijri .alf-dot { background: var(--alf-gold); }
+.alf-cell-greg .alf-dot { background: var(--alf-green-lt); }
+.alf-cell-today { border-color: var(--alf-gold); }
+.alf-cell-sel {
+    background: var(--alf-green) !important;
+    .alf-g, .alf-h { color: #fff; }
+    .alf-dot { background: #fff !important; }
+}
+
+// -------------------------------------------------------------- main pane
+.alf-main { flex: 1 1 auto; min-width: 0; }
+.alf-loading { padding: 40px; color: var(--alf-muted); }
+
+.alf-daybar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    background: var(--alf-green);
+    color: #fff;
+    border-radius: 8px;
+    padding: 11px 14px;
+}
+.alf-daybar-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.alf-tag {
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 11px;
+    padding: 4px 12px;
+}
+.alf-tag-hijri { background: var(--alf-gold); color: #231c0c; }
+.alf-tag-greg { background: #cfe0d5; color: var(--alf-green); }
+.alf-tag-none { background: rgba(255, 255, 255, 0.16); color: #fff; }
+
+// ------------------------------------------------------------------ KPIs
+.alf-kpis {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px;
+    margin: 12px 0;
+}
+.alf-kpi {
+    background: #fff;
+    border: 1px solid var(--alf-line);
+    border-left: 3px solid var(--alf-green-lt);
+    border-radius: 7px;
+    padding: 10px 12px;
+}
+.alf-kpi-actual { border-left-color: #8a8f96; }
+.alf-kpi-label { font-size: 11px; color: var(--alf-muted); }
+.alf-kpi-value {
+    font-size: 21px;
+    font-weight: 700;
+    color: var(--alf-green);
+    line-height: 1.25;
+}
+.alf-kpi-foot { font-size: 10px; color: var(--alf-muted); }
+.alf-up { color: var(--alf-green-lt); }
+.alf-down { color: #a33b32; }
+
+// ------------------------------------------------------------- line chart
+.alf-chart-card {
+    background: #fff;
+    border: 1px solid var(--alf-line);
+    border-radius: 7px;
+    padding: 10px 12px 4px;
+    margin-bottom: 12px;
+}
+.alf-chart-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 2px;
+}
+.alf-chart-title { font-size: 11px; color: var(--alf-muted); }
+.alf-chart-reset {
+    border: none;
+    background: none;
+    padding: 0;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--alf-green-lt);
+    cursor: pointer;
+
+    &:hover { text-decoration: underline; }
+}
+.alf-chart {
+    position: relative;
+    cursor: crosshair;
+}
+.alf-svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+}
+.alf-grid {
+    stroke: #eceae4;
+    stroke-width: 1;
+}
+.alf-ytick,
+.alf-xtick {
+    font-size: 9px;
+    fill: var(--alf-muted);
+}
+.alf-pt-sel {
+    fill: #fff;
+    stroke: var(--alf-green);
+    stroke-width: 2.4;
+    opacity: 0;
+    animation: alf-fade 500ms 700ms ease-out forwards;
+}
+.alf-line {
+    fill: none;
+    stroke: var(--alf-green-lt);
+    stroke-width: 2.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    // Longer than any path this chart can produce, so the whole line is
+    // hidden at offset and draws itself in.
+    stroke-dasharray: 6000;
+    animation: alf-draw 900ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+}
+.alf-area {
+    opacity: 0;
+    animation: alf-fade 700ms 350ms ease-out forwards;
+}
+.alf-pt-ev {
+    fill: var(--alf-gold);
+    stroke: #fff;
+    stroke-width: 1.4;
+    opacity: 0;
+    animation: alf-fade 500ms 700ms ease-out forwards;
+}
+.alf-guide {
+    stroke: var(--alf-green);
+    stroke-width: 1;
+    stroke-dasharray: 3 3;
+    opacity: 0.55;
+}
+.alf-pt-hover {
+    fill: var(--alf-green);
+    stroke: #fff;
+    stroke-width: 2;
+}
+.alf-tip {
+    position: absolute;
+    top: 0;
+    transform: translateX(-50%);
+    background: var(--alf-green);
+    color: #fff;
+    border-radius: 6px;
+    padding: 5px 9px;
+    font-size: 11px;
+    line-height: 1.35;
+    white-space: nowrap;
+    pointer-events: none;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+    z-index: 2;
+}
+.alf-tip-date { opacity: 0.8; font-size: 10px; }
+.alf-tip-qty { font-weight: 700; }
+.alf-tip-ev { color: var(--alf-gold-lt); font-size: 10px; }
+
+@keyframes alf-draw {
+    from { stroke-dashoffset: 6000; }
+    to { stroke-dashoffset: 0; }
+}
+@keyframes alf-fade {
+    to { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .alf-line { animation: none; stroke-dasharray: none; }
+    .alf-area, .alf-pt-ev { animation: none; opacity: 1; }
+}
+
+// ----------------------------------------------------------------- table
+.alf-table-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+.alf-table-title { font-weight: 700; color: var(--alf-green); }
+.alf-muted { color: var(--alf-muted); }
+
+.alf-table {
+    width: 100%;
+    background: #fff;
+    border: 1px solid var(--alf-line);
+    border-radius: 7px;
+    border-collapse: separate;
+    border-spacing: 0;
+    overflow: hidden;
+
+    th {
+        background: var(--alf-green);
+        color: #fff;
+        font-size: 11px;
+        font-weight: 600;
+        padding: 7px 9px;
+        text-align: left;
+        white-space: nowrap;
+    }
+    td {
+        padding: 6px 9px;
+        border-top: 1px solid #f0eee8;
+        vertical-align: middle;
+    }
+    .num { text-align: right; }
+
+    tbody tr {
+        cursor: pointer;
+
+        &:hover { background: var(--alf-gold-lt); }
+    }
+}
+// The row whose series the chart is drawing.
+.alf-row-sel {
+    background: #eef3f0;
+    box-shadow: inset 3px 0 0 var(--alf-green);
+}
+.alf-pname { font-weight: 600; }
+.alf-pred { font-weight: 700; color: var(--alf-green); }
+// The unit travels with the number, so the table needs no UoM column.
+.alf-unit {
+    font-size: 10px;
+    font-weight: 400;
+    color: var(--alf-muted);
+    margin-left: 3px;
+}
+
+.alf-acc {
+    font-size: 10px;
+    margin-left: 5px;
+    border-radius: 3px;
+    padding: 1px 4px;
+}
+.alf-acc-ok { background: #e3efe7; color: var(--alf-green); }
+.alf-acc-off { background: #f7e7e5; color: #a33b32; }
