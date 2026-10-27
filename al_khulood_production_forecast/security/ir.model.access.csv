@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_al_demand_event_user,al.demand.event user,model_al_demand_event,stock.group_stock_user,1,0,0,0
+access_al_demand_event_manager,al.demand.event manager,model_al_demand_event,stock.group_stock_manager,1,1,1,1
+access_al_demand_event_rule_user,al.demand.event.rule user,model_al_demand_event_rule,stock.group_stock_user,1,0,0,0
+access_al_demand_event_rule_manager,al.demand.event.rule manager,model_al_demand_event_rule,stock.group_stock_manager,1,1,1,1

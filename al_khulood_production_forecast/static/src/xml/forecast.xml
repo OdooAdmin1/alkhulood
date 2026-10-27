@@ -1,0 +1,243 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<t t-name="al_khulood_production_forecast.Dashboard">
+    <div class="alf-root">
+
+        <!-- ============================ header ============================ -->
+        <div class="alf-head">
+            <div class="alf-head-title">
+                <h2>Production Forecast</h2>
+                <span class="alf-sub">What will sell - read through both calendars</span>
+            </div>
+            <div class="alf-head-nav">
+                <button class="btn btn-sm btn-secondary" t-on-click="() => this.step(-1)">&#8592; Prev</button>
+                <button class="btn btn-sm btn-secondary" t-on-click="() => this.goToday()">Today</button>
+                <button class="btn btn-sm btn-secondary" t-on-click="() => this.step(1)">Next &#8594;</button>
+            </div>
+        </div>
+
+        <div class="alf-body">
+
+            <!-- ========================= calendar ========================= -->
+            <div class="alf-cal-pane">
+                <div class="alf-cal-head">
+                    <button class="btn btn-sm btn-light" t-on-click="() => this.shiftMonth(-1)">&#8249;</button>
+                    <div class="alf-cal-title">
+                        <span class="alf-cal-month" t-esc="monthLabel"/>
+                        <span class="alf-cal-hijri" t-esc="hijriMonthLabel"/>
+                    </div>
+                    <button class="btn btn-sm btn-light" t-on-click="() => this.shiftMonth(1)">&#8250;</button>
+                </div>
+                <div class="alf-cal-grid alf-cal-dow">
+                    <t t-foreach="weekdayHeads" t-as="d" t-key="d">
+                        <div class="alf-dow" t-esc="d"/>
+                    </t>
+                </div>
+                <div class="alf-cal-grid">
+                    <t t-foreach="cells" t-as="cell" t-key="cell_index">
+                        <div t-att-class="cellClass(cell)"
+                             t-att-title="cell ? cellTitle(cell) : null"
+                             t-on-click="() => cell ? this.pick(cell.date) : null">
+                            <t t-if="cell">
+                                <span class="alf-g" t-esc="cell.day"/>
+                                <span class="alf-h" t-esc="cell.hijri.day"/>
+                                <t t-if="cell.events.length">
+                                    <span class="alf-dot"/>
+                                </t>
+                            </t>
+                        </div>
+                    </t>
+                </div>
+            </div>
+
+            <!-- ========================== summary ========================= -->
+            <div class="alf-main">
+                <t t-if="state.loading">
+                    <div class="alf-loading">Working out the forecast...</div>
+                </t>
+                <t t-elif="state.data">
+                    <t t-set="d" t-value="state.data"/>
+
+                    <div class="alf-daybar">
+                        <div class="alf-daybar-dates">
+                            <div class="alf-greg">
+                                <t t-esc="d.weekday"/>, <t t-esc="d.date"/>
+                            </div>
+                            <div class="alf-hijri" t-esc="d.hijri.label"/>
+                        </div>
+                        <div class="alf-daybar-tags">
+                            <t t-foreach="d.events" t-as="ev" t-key="ev.id">
+                                <span t-att-class="'alf-tag ' + (ev.calendar === 'hijri' ? 'alf-tag-hijri' : 'alf-tag-greg')">
+                                    <t t-esc="ev.label"/>
+                                    <t t-if="!ev.confirmed"> *</t>
+                                </span>
+                            </t>
+                            <t t-if="!d.events.length">
+                                <span class="alf-tag alf-tag-none">Ordinary day</span>
+                            </t>
+                        </div>
+                    </div>
+
+                    <div class="alf-kpis">
+                        <div class="alf-kpi">
+                            <div class="alf-kpi-label">Predicted sales</div>
+                            <div class="alf-kpi-value" t-esc="fmt(d.kpis.predicted_units)"/>
+                            <div class="alf-kpi-foot">units, all branches</div>
+                        </div>
+                        <div class="alf-kpi">
+                            <div class="alf-kpi-label">Predicted revenue</div>
+                            <div class="alf-kpi-value" t-esc="fmtMoney(d.kpis.predicted_revenue)"/>
+                            <div class="alf-kpi-foot">BHD</div>
+                        </div>
+                        <div class="alf-kpi">
+                            <div class="alf-kpi-label">Against a normal <t t-esc="d.weekday"/></div>
+                            <div t-att-class="'alf-kpi-value ' + (d.kpis.uplift_pct >= 0 ? 'alf-up' : 'alf-down')">
+                                <t t-if="d.kpis.uplift_pct >= 0">+</t><t t-esc="fmt(d.kpis.uplift_pct, 0)"/>%
+                            </div>
+                            <div class="alf-kpi-foot">
+                                normal = <t t-esc="fmt(d.kpis.baseline_units)"/> units
+                            </div>
+                        </div>
+                        <t t-if="d.kpis.actual_units !== null">
+                            <div class="alf-kpi alf-kpi-actual">
+                                <div class="alf-kpi-label">Actually sold</div>
+                                <div class="alf-kpi-value" t-esc="fmt(d.kpis.actual_units)"/>
+                                <div class="alf-kpi-foot">this day is in the past</div>
+                            </div>
+                        </t>
+                    </div>
+
+                    <!-- ================== recent history ================== -->
+                    <t t-if="chart">
+                        <div class="alf-chart-card">
+                            <div class="alf-chart-head">
+                                <span class="alf-chart-title">
+                                    <t t-esc="chartTitle"/>, 45 days to this date
+                                </span>
+                                <t t-if="state.productId">
+                                    <button class="alf-chart-reset"
+                                            t-on-click="() => this.selectProduct(null)">
+                                        &#8592; all products
+                                    </button>
+                                </t>
+                            </div>
+                            <!-- keyed so a new day or product re-runs the draw animation -->
+                            <div class="alf-chart" t-key="d.date + ':' + (state.productId || 'all')"
+                                 t-on-mousemove="onChartMove"
+                                 t-on-mouseleave="() => this.state.hoverIdx = null">
+                                <svg t-att-viewBox="'0 0 ' + chart.w + ' ' + chart.h"
+                                     class="alf-svg" role="img"
+                                     aria-label="Units sold over the 45 days to the selected date">
+                                    <defs>
+                                        <linearGradient id="alfFill" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="0%" stop-color="#2D6A4F" stop-opacity="0.26"/>
+                                            <stop offset="100%" stop-color="#2D6A4F" stop-opacity="0"/>
+                                        </linearGradient>
+                                    </defs>
+
+                                    <t t-foreach="chart.ticks" t-as="tk" t-key="tk_index">
+                                        <line class="alf-grid"
+                                              x1="0" t-att-y1="tk.y"
+                                              t-att-x2="chart.w" t-att-y2="tk.y"/>
+                                        <text class="alf-ytick" x="2" t-att-y="tk.y - 3"
+                                              t-esc="fmt(tk.v, 0)"/>
+                                    </t>
+
+                                    <path class="alf-area" t-att-d="chart.area" fill="url(#alfFill)"/>
+                                    <path class="alf-line" t-att-d="chart.line"/>
+
+                                    <t t-foreach="chart.xlabels" t-as="xl" t-key="xl_index">
+                                        <text class="alf-xtick"
+                                              t-att-x="xl.x" t-att-y="chart.h - 4"
+                                              t-att-text-anchor="xl.anchor" t-esc="xl.label"/>
+                                    </t>
+
+                                    <!-- occasion days, so festivals are visible on the curve -->
+                                    <t t-foreach="chart.events" t-as="p" t-key="p.date">
+                                        <circle class="alf-pt-ev" t-att-cx="p.x" t-att-cy="p.y" r="3.2"/>
+                                    </t>
+                                    <t t-if="chart.selected">
+                                        <circle class="alf-pt-sel"
+                                                t-att-cx="chart.selected.x"
+                                                t-att-cy="chart.selected.y" r="4"/>
+                                    </t>
+
+                                    <t t-if="hoverPoint">
+                                        <line class="alf-guide"
+                                              t-att-x1="hoverPoint.x" t-att-y1="chart.padT"
+                                              t-att-x2="hoverPoint.x" t-att-y2="chart.baseY"/>
+                                        <circle class="alf-pt-hover"
+                                                t-att-cx="hoverPoint.x" t-att-cy="hoverPoint.y" r="5"/>
+                                    </t>
+                                </svg>
+
+                                <t t-if="hoverPoint">
+                                    <div class="alf-tip"
+                                         t-att-style="'left:' + (hoverPoint.x / chart.w * 100) + '%'">
+                                        <div class="alf-tip-date" t-esc="hoverPoint.date"/>
+                                        <div class="alf-tip-qty"
+                                             t-esc="fmt(hoverPoint.qty) + ' ' + chartUnit"/>
+                                        <div class="alf-tip-ev" t-if="hoverPoint.is_event">occasion day</div>
+                                    </div>
+                                </t>
+                            </div>
+                        </div>
+                    </t>
+
+                    <!-- ==================== products ===================== -->
+                    <div class="alf-table-head">
+                        <div class="alf-table-title">
+                            Per product
+                            <span class="alf-muted">
+                                (<t t-esc="d.kpis.tracked_items"/> tracked)
+                            </span>
+                        </div>
+                    </div>
+
+                    <table class="alf-table">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th class="num">Normal</th>
+                                <th class="num">Predicted sales</th>
+                                <t t-if="d.is_past"><th class="num">Actually sold</th></t>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <t t-foreach="rows" t-as="r" t-key="r.product_id">
+                                <tr t-att-class="state.productId === r.product_id ? 'alf-row-sel' : ''"
+                                    t-on-click="() => this.selectProduct(r.product_id)"
+                                    t-att-title="'Chart ' + r.name">
+                                    <td><span class="alf-pname" t-esc="r.name"/></td>
+                                    <td class="num alf-muted">
+                                        <t t-esc="fmt(r.baseline_qty)"/>
+                                        <span class="alf-unit" t-esc="r.uom"/>
+                                    </td>
+                                    <td class="num alf-pred">
+                                        <t t-esc="fmt(r.predicted_qty)"/>
+                                        <span class="alf-unit" t-esc="r.uom"/>
+                                    </td>
+                                    <t t-if="d.is_past">
+                                        <td class="num">
+                                            <t t-esc="fmt(r.actual_qty)"/>
+                                            <span class="alf-unit" t-esc="r.uom"/>
+                                            <t t-set="acc" t-value="accuracy(r)"/>
+                                            <t t-if="acc and acc.pct !== null">
+                                                <span t-att-class="'alf-acc ' + (Math.abs(acc.pct) &lt;= 20 ? 'alf-acc-ok' : 'alf-acc-off')">
+                                                    <t t-if="acc.pct >= 0">+</t><t t-esc="fmt(acc.pct, 0)"/>%
+                                                </span>
+                                            </t>
+                                        </td>
+                                    </t>
+                                </tr>
+                            </t>
+                        </tbody>
+                    </table>
+                </t>
+            </div>
+        </div>
+    </div>
+</t>
+
+</templates>

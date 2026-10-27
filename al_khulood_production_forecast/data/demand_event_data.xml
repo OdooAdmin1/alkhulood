@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Idempotent: adds only the occasions a database does not have yet,
+         so shipping a new year of the calendar is just a module upgrade. -->
+    <function model="al.demand.event" name="_seed_shipped_calendar"/>
+</odoo>
