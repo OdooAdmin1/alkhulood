@@ -1,7 +1,7 @@
 from datetime import timedelta
 
 from odoo import api, fields, models
-from odoo.osv import expression
+from odoo.fields import Domain
 
 # The client wants exactly these 9 retail branches on the dashboard - never
 # MAIN STORE, SHOP RETURN, or any other warehouse that might exist/get added.
@@ -20,7 +20,7 @@ BRANCH_NAME_KEYWORDS = [
 ]
 
 
-class AlKhuloodEodStockReport(models.Model):
+class AlKhuloodEodStockReport(models.AbstractModel):
     """Reporting model with no database table and no stored history.
 
     Every number this dashboard shows - whether "right now" or "as of
@@ -38,15 +38,14 @@ class AlKhuloodEodStockReport(models.Model):
 
     _name = "al.khulood.eod.stock.report"
     _description = "Al Khulood EOD Stock Report (computed on demand)"
-    _auto = False  # no DB table is created for this model
 
     @api.model
     def _get_tracked_products(self, product_ids=None, category_ids=None):
         domain = [("eod_dashboard_tracked", "=", True)]
         if product_ids:
-            domain = expression.AND([domain, [("id", "in", product_ids)]])
+            domain = Domain.AND([domain, [("id", "in", product_ids)]])
         if category_ids:
-            domain = expression.AND([domain, [("categ_id", "in", category_ids)]])
+            domain = Domain.AND([domain, [("categ_id", "in", category_ids)]])
         return self.env["product.product"].search(domain, order="name")
 
     @api.model
@@ -57,8 +56,8 @@ class AlKhuloodEodStockReport(models.Model):
             domain = [("id", "in", warehouse_ids), ("eod_dashboard_branch", "=", True)]
             return self.env["stock.warehouse"].search(domain, order="name")
 
-        name_domain = expression.OR([[("name", "ilike", kw)] for kw in BRANCH_NAME_KEYWORDS])
-        domain = expression.AND([[("eod_dashboard_branch", "=", True)], name_domain])
+        name_domain = Domain.OR([[("name", "ilike", kw)] for kw in BRANCH_NAME_KEYWORDS])
+        domain = Domain.AND([[("eod_dashboard_branch", "=", True)], name_domain])
         return self.env["stock.warehouse"].search(domain, order="name")
 
     @api.model
