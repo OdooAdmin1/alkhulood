@@ -24,7 +24,7 @@
                 <field name="warehouse_id"/>
                 <field name="categ_id"/>
                 <field name="product_id"/>
-                <group string="Group by">
+                <group>
                     <filter name="group_year" string="Year" context="{'group_by': 'date:year'}"/>
                     <filter name="group_month" string="Month" context="{'group_by': 'date:month'}"/>
                     <filter name="group_branch" string="Branch" context="{'group_by': 'warehouse_id'}"/>

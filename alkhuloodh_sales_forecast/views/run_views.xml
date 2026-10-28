@@ -86,7 +86,7 @@
                 <separator/>
                 <filter name="m_revenue" string="Revenue" domain="[('metric', '=', 'revenue')]"/>
                 <filter name="m_qty" string="Quantity" domain="[('metric', '=', 'qty')]"/>
-                <group string="Group by">
+                <group>
                     <filter name="g_level" string="Level" context="{'group_by': 'level'}"/>
                     <filter name="g_month" string="Month" context="{'group_by': 'date:month'}"/>
                     <filter name="g_branch" string="Branch" context="{'group_by': 'warehouse_id'}"/>
