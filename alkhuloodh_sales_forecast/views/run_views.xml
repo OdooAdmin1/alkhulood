@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_sf_run_list" model="ir.ui.view">
+        <field name="name">alkhuloodh.sf.run.list</field>
+        <field name="model">alkhuloodh.sf.run</field>
+        <field name="arch" type="xml">
+            <list create="0" edit="0" delete="0" decoration-danger="state == 'failed'" decoration-success="is_current">
+                <field name="run_date"/>
+                <field name="kind"/>
+                <field name="state"/>
+                <field name="origin"/>
+                <field name="horizon_end"/>
+                <field name="line_count"/>
+                <field name="seconds"/>
+                <field name="is_current"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_sf_run_form" model="ir.ui.view">
+        <field name="name">alkhuloodh.sf.run.form</field>
+        <field name="model">alkhuloodh.sf.run</field>
+        <field name="arch" type="xml">
+            <form create="0" edit="0" delete="0">
+                <header><field name="state" widget="statusbar"/></header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="kind"/>
+                            <field name="run_date"/>
+                            <field name="origin"/>
+                            <field name="horizon_end"/>
+                        </group>
+                        <group>
+                            <field name="line_count"/>
+                            <field name="seconds"/>
+                            <field name="is_current"/>
+                            <field name="engine_version"/>
+                        </group>
+                    </group>
+                    <group string="Error" invisible="not error_log">
+                        <field name="error_log" nolabel="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_sf_run" model="ir.actions.act_window">
+        <field name="name">Forecast runs</field>
+        <field name="res_model">alkhuloodh.sf.run</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="view_sf_line_list" model="ir.ui.view">
+        <field name="name">alkhuloodh.sf.forecast.line.list</field>
+        <field name="model">alkhuloodh.sf.forecast.line</field>
+        <field name="arch" type="xml">
+            <list create="0" edit="0" delete="0">
+                <field name="date"/>
+                <field name="level"/>
+                <field name="warehouse_id"/>
+                <field name="categ_id"/>
+                <field name="product_id"/>
+                <field name="metric"/>
+                <field name="low"/>
+                <field name="expected"/>
+                <field name="high"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_sf_line_search" model="ir.ui.view">
+        <field name="name">alkhuloodh.sf.forecast.line.search</field>
+        <field name="model">alkhuloodh.sf.forecast.line</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="date"/>
+                <field name="warehouse_id"/>
+                <field name="categ_id"/>
+                <field name="product_id"/>
+                <filter name="current" string="Current run" domain="[('run_id.is_current', '=', True)]"/>
+                <separator/>
+                <filter name="lvl_company" string="Company" domain="[('level', '=', 'company')]"/>
+                <filter name="lvl_branch" string="Branch" domain="[('level', '=', 'branch')]"/>
+                <filter name="lvl_category" string="Category" domain="[('level', '=', 'category')]"/>
+                <filter name="lvl_cell" string="Branch x category" domain="[('level', '=', 'cell')]"/>
+                <filter name="lvl_product" string="Product" domain="[('level', '=', 'product')]"/>
+                <separator/>
+                <filter name="m_revenue" string="Revenue" domain="[('metric', '=', 'revenue')]"/>
+                <filter name="m_qty" string="Quantity" domain="[('metric', '=', 'qty')]"/>
+                <group string="Group by">
+                    <filter name="g_level" string="Level" context="{'group_by': 'level'}"/>
+                    <filter name="g_month" string="Month" context="{'group_by': 'date:month'}"/>
+                    <filter name="g_branch" string="Branch" context="{'group_by': 'warehouse_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+    <record id="action_sf_line" model="ir.actions.act_window">
+        <field name="name">Forecast lines</field>
+        <field name="res_model">alkhuloodh.sf.forecast.line</field>
+        <field name="view_mode">list</field>
+        <field name="context">{'search_default_current': 1, 'search_default_lvl_company': 1, 'search_default_m_revenue': 1}</field>
+    </record>
+</odoo>

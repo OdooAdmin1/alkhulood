@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_sf_actual_list" model="ir.ui.view">
+        <field name="name">alkhuloodh.sf.actual.daily.list</field>
+        <field name="model">alkhuloodh.sf.actual.daily</field>
+        <field name="arch" type="xml">
+            <list create="0" edit="0" delete="0">
+                <field name="date"/>
+                <field name="warehouse_id"/>
+                <field name="categ_id"/>
+                <field name="product_id"/>
+                <field name="qty" sum="Quantity"/>
+                <field name="qty_free" sum="Free" optional="show"/>
+                <field name="revenue" sum="Revenue"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_sf_actual_search" model="ir.ui.view">
+        <field name="name">alkhuloodh.sf.actual.daily.search</field>
+        <field name="model">alkhuloodh.sf.actual.daily</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="date"/>
+                <field name="warehouse_id"/>
+                <field name="categ_id"/>
+                <field name="product_id"/>
+                <group string="Group by">
+                    <filter name="group_year" string="Year" context="{'group_by': 'date:year'}"/>
+                    <filter name="group_month" string="Month" context="{'group_by': 'date:month'}"/>
+                    <filter name="group_branch" string="Branch" context="{'group_by': 'warehouse_id'}"/>
+                    <filter name="group_categ" string="Category" context="{'group_by': 'categ_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+    <record id="view_sf_actual_pivot" model="ir.ui.view">
+        <field name="name">alkhuloodh.sf.actual.daily.pivot</field>
+        <field name="model">alkhuloodh.sf.actual.daily</field>
+        <field name="arch" type="xml">
+            <pivot>
+                <field name="date" interval="year" type="row"/>
+                <field name="warehouse_id" type="col"/>
+                <field name="revenue" type="measure"/>
+                <field name="qty" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+    <record id="action_sf_actual" model="ir.actions.act_window">
+        <field name="name">Daily actuals</field>
+        <field name="res_model">alkhuloodh.sf.actual.daily</field>
+        <field name="view_mode">pivot,list</field>
+    </record>
+</odoo>

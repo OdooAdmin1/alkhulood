@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Placeholder groups. Real access levels are decided after testing and the client demo. -->
+    <record id="group_sf_user" model="res.groups">
+        <field name="name">Sales Forecast: User</field>
+    </record>
+    <record id="group_sf_manager" model="res.groups">
+        <field name="name">Sales Forecast: Manager</field>
+        <field name="implied_ids" eval="[(4, ref('group_sf_user'))]"/>
+    </record>
+</odoo>

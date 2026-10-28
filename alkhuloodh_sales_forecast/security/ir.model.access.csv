@@ -1,0 +1,25 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_sf_config_user,sf config user,model_alkhuloodh_sf_config,group_sf_user,1,0,0,0
+access_sf_config_manager,sf config manager,model_alkhuloodh_sf_config,group_sf_manager,1,1,1,0
+access_sf_config_system,sf config system,model_alkhuloodh_sf_config,base.group_system,1,1,1,1
+access_sf_calendar_user,sf calendar user,model_alkhuloodh_sf_calendar_day,group_sf_user,1,0,0,0
+access_sf_calendar_manager,sf calendar manager,model_alkhuloodh_sf_calendar_day,group_sf_manager,1,0,0,0
+access_sf_calendar_system,sf calendar system,model_alkhuloodh_sf_calendar_day,base.group_system,1,1,1,1
+access_sf_actual_user,sf actual user,model_alkhuloodh_sf_actual_daily,group_sf_user,1,0,0,0
+access_sf_actual_manager,sf actual manager,model_alkhuloodh_sf_actual_daily,group_sf_manager,1,0,0,0
+access_sf_actual_system,sf actual system,model_alkhuloodh_sf_actual_daily,base.group_system,1,0,0,0
+access_sf_run_user,sf run user,model_alkhuloodh_sf_run,group_sf_user,1,0,0,0
+access_sf_run_manager,sf run manager,model_alkhuloodh_sf_run,group_sf_manager,1,0,0,0
+access_sf_run_system,sf run system,model_alkhuloodh_sf_run,base.group_system,1,1,1,1
+access_sf_line_user,sf line user,model_alkhuloodh_sf_forecast_line,group_sf_user,1,0,0,0
+access_sf_line_manager,sf line manager,model_alkhuloodh_sf_forecast_line,group_sf_manager,1,0,0,0
+access_sf_line_system,sf line system,model_alkhuloodh_sf_forecast_line,base.group_system,1,0,0,0
+access_sf_range_user,sf range user,model_alkhuloodh_sf_range_param,group_sf_user,1,0,0,0
+access_sf_range_manager,sf range manager,model_alkhuloodh_sf_range_param,group_sf_manager,1,0,0,0
+access_sf_range_system,sf range system,model_alkhuloodh_sf_range_param,base.group_system,1,1,1,1
+access_sf_override_user,sf override user,model_alkhuloodh_sf_override,group_sf_user,1,0,0,0
+access_sf_override_manager,sf override manager,model_alkhuloodh_sf_override,group_sf_manager,1,1,1,1
+access_sf_override_system,sf override system,model_alkhuloodh_sf_override,base.group_system,1,1,1,1
+access_sf_accuracy_user,sf accuracy user,model_alkhuloodh_sf_accuracy,group_sf_user,1,0,0,0
+access_sf_accuracy_manager,sf accuracy manager,model_alkhuloodh_sf_accuracy,group_sf_manager,1,0,0,0
+access_sf_accuracy_system,sf accuracy system,model_alkhuloodh_sf_accuracy,base.group_system,1,0,0,0

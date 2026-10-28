@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_sf_accuracy_list" model="ir.ui.view">
+        <field name="name">alkhuloodh.sf.accuracy.list</field>
+        <field name="model">alkhuloodh.sf.accuracy</field>
+        <field name="arch" type="xml">
+            <list create="0" edit="0" delete="0" decoration-danger="accuracy_daily &lt; 70" decoration-warning="accuracy_daily &gt;= 70 and accuracy_daily &lt; 80">
+                <field name="origin"/>
+                <field name="kind"/>
+                <field name="level"/>
+                <field name="warehouse_id" optional="show"/>
+                <field name="categ_id" optional="show"/>
+                <field name="window_days"/>
+                <field name="n_days" optional="hide"/>
+                <field name="expected_total"/>
+                <field name="actual_total"/>
+                <field name="accuracy_daily"/>
+                <field name="accuracy_total"/>
+                <field name="bias_pct"/>
+                <field name="in_range_pct"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_sf_accuracy_graph" model="ir.ui.view">
+        <field name="name">alkhuloodh.sf.accuracy.graph</field>
+        <field name="model">alkhuloodh.sf.accuracy</field>
+        <field name="arch" type="xml">
+            <graph type="line" string="Accuracy over time">
+                <field name="origin" interval="week"/>
+                <field name="kind"/>
+                <field name="accuracy_daily" type="measure"/>
+            </graph>
+        </field>
+    </record>
+    <record id="view_sf_accuracy_search" model="ir.ui.view">
+        <field name="name">alkhuloodh.sf.accuracy.search</field>
+        <field name="model">alkhuloodh.sf.accuracy</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="warehouse_id"/>
+                <field name="categ_id"/>
+                <filter name="company" string="Company" domain="[('level', '=', 'company')]"/>
+                <filter name="branch" string="Branch" domain="[('level', '=', 'branch')]"/>
+                <filter name="category" string="Category" domain="[('level', '=', 'category')]"/>
+                <separator/>
+                <filter name="w7" string="First 7 days" domain="[('window_days', '=', 7)]"/>
+                <filter name="w28" string="First 28 days" domain="[('window_days', '=', 28)]"/>
+                <separator/>
+                <filter name="weekly" string="Weekly snapshots" domain="[('kind', '=', 'weekly')]"/>
+                <filter name="backtest" string="Backtests" domain="[('kind', '=', 'backtest')]"/>
+                <group>
+                    <filter name="g_kind" string="Type" context="{'group_by': 'kind'}"/>
+                    <filter name="g_level" string="Level" context="{'group_by': 'level'}"/>
+                    <filter name="g_wh" string="Branch" context="{'group_by': 'warehouse_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+    <record id="action_sf_accuracy" model="ir.actions.act_window">
+        <field name="name">Accuracy</field>
+        <field name="res_model">alkhuloodh.sf.accuracy</field>
+        <field name="view_mode">list,graph</field>
+        <field name="context">{'search_default_company': 1, 'search_default_w7': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No accuracy rows yet</p>
+            <p>Press "Build past forecasts" and then "Refresh accuracy" in Configuration.</p>
+        </field>
+    </record>
+</odoo>

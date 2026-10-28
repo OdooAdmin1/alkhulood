@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_sf_override_list" model="ir.ui.view">
+        <field name="name">alkhuloodh.sf.override.list</field>
+        <field name="model">alkhuloodh.sf.override</field>
+        <field name="arch" type="xml">
+            <list decoration-muted="state == 'draft'" decoration-bf="state == 'confirmed'">
+                <header>
+                    <button name="action_suggest" type="object" string="Suggest upcoming dates" display="always"/>
+                    <button name="action_refresh_forecast" type="object" string="Refresh forecast now" display="always"/>
+                    <button name="action_confirm" type="object" string="Confirm selected"/>
+                </header>
+                <field name="kind"/>
+                <field name="date"/>
+                <field name="date_to" optional="show"/>
+                <field name="base_date"/>
+                <field name="shift_days"/>
+                <field name="state"/>
+                <field name="source" optional="show"/>
+                <field name="note" optional="show"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_sf_override_form" model="ir.ui.view">
+        <field name="name">alkhuloodh.sf.override.form</field>
+        <field name="model">alkhuloodh.sf.override</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_confirm" type="object" string="Confirm" class="btn-primary" invisible="state == 'confirmed'"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="kind"/>
+                            <field name="date"/>
+                            <field name="date_to" invisible="kind not in ('holiday', 'closure')"/>
+                        </group>
+                        <group>
+                            <field name="base_date" invisible="kind in ('holiday', 'closure')"/>
+                            <field name="shift_days" invisible="kind in ('holiday', 'closure')"/>
+                            <field name="source"/>
+                            <field name="note"/>
+                            <field name="active" invisible="1"/>
+                        </group>
+                    </group>
+                    <p class="text-muted">
+                        Eid, Ramadan, Ashura and Hijri New Year: enter the date that was actually confirmed (moon sighting or the client).
+                        The forecast moves the whole occasion pattern to that date. Holidays are kept out of what the model learns.
+                        A closure also forces the forecast to 0 on those days (all branches).
+                        Only Confirmed lines are used. Press "Refresh forecast now" afterwards, or wait for the nightly run.
+                    </p>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="view_sf_override_search" model="ir.ui.view">
+        <field name="name">alkhuloodh.sf.override.search</field>
+        <field name="model">alkhuloodh.sf.override</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="kind"/>
+                <filter name="confirmed" string="Confirmed" domain="[('state', '=', 'confirmed')]"/>
+                <filter name="draft" string="Not confirmed" domain="[('state', '=', 'draft')]"/>
+                <filter name="archived" string="Archived" domain="[('active', '=', False)]"/>
+                <group>
+                    <filter name="g_kind" string="Kind" context="{'group_by': 'kind'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+    <record id="action_sf_override" model="ir.actions.act_window">
+        <field name="name">Dates &amp; holidays</field>
+        <field name="res_model">alkhuloodh.sf.override</field>
+        <field name="view_mode">list,form</field>
+    </record>
+</odoo>

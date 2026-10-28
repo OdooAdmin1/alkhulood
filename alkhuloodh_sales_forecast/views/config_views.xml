@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_sf_config_form" model="ir.ui.view">
+        <field name="name">alkhuloodh.sf.config.form</field>
+        <field name="model">alkhuloodh.sf.config</field>
+        <field name="arch" type="xml">
+            <form create="0" delete="0">
+                <header>
+                    <button name="action_load_full" type="object" string="Load full history" class="btn-primary"
+                            confirm="Rebuild all daily actuals from the POS data? This only reads POS and rewrites this module's own table."/>
+                    <button name="action_load_recent" type="object" string="Refresh recent days"/>
+                    <button name="action_run_forecast" type="object" string="Run forecast now"/>
+                    <button name="action_build_backtests" type="object" string="Build past forecasts (backtest)"/>
+                    <button name="action_refresh_accuracy" type="object" string="Refresh accuracy"/>
+                    <button name="action_reconcile" type="object" string="Reconciliation summary"/>
+                </header>
+                <sheet>
+                    <group string="Accuracy check">
+                        <field name="drift_message" nolabel="1"/>
+                    </group>
+                    <group>
+                        <group string="Settings">
+                            <field name="name"/>
+                            <field name="tz"/>
+                            <field name="history_start"/>
+                            <field name="horizon_months"/>
+                            <field name="overlap_days"/>
+                        </group>
+                        <group string="Last load">
+                            <field name="last_load_at"/>
+                            <field name="last_load_range"/>
+                            <field name="last_load_rows"/>
+                            <field name="last_load_seconds"/>
+                        </group>
+                    </group>
+                    <group string="Excluded from sales (not real sales)">
+                        <field name="excluded_product_ids" widget="many2many_tags"/>
+                        <field name="excluded_categ_ids" widget="many2many_tags"/>
+                    </group>
+                    <group string="Reconciliation summary">
+                        <field name="reconciliation_text" nolabel="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_sf_config" model="ir.actions.server">
+        <field name="name">Configuration</field>
+        <field name="model_id" ref="model_alkhuloodh_sf_config"/>
+        <field name="state">code</field>
+        <field name="code">action = model.action_open_config()</field>
+    </record>
+</odoo>
