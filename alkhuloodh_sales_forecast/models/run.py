@@ -50,6 +50,7 @@ class AlkhuloodhSfRun(models.Model):
     is_current = fields.Boolean(string='Shown on dashboard', default=False, index=True)
     engine_version = fields.Char()
     error_log = fields.Text()
+    has_products = fields.Boolean(string='Includes products', default=False)
 
     @api.depends('kind', 'origin')
     def _compute_name(self):
@@ -94,17 +95,19 @@ class AlkhuloodhSfRun(models.Model):
             o = (end.replace(day=1) - relativedelta(months=i - 1) - pd.Timedelta(days=1)).normalize()
             if o < end and o - pd.Timestamp(cfg.history_start) > pd.Timedelta(days=240):
                 origins.append(o)
-        done = set(self.sudo().search([('kind', '=', 'backtest'), ('state', '=', 'done')]).mapped('origin'))
+        done = set(self.sudo().search([('kind', '=', 'backtest'), ('state', '=', 'done'),
+                                       ('has_products', '=', True)]).mapped('origin'))
         todo = [o for o in origins if o.date() not in done]
         made = 0
         for o in todo:
             if made and time.time() - t0 > budget_seconds:
                 break
+            self.sudo().search([('kind', '=', 'backtest'), ('origin', '=', o.date())]).unlink()   # older version without products
             run = self.sudo().create({'kind': 'backtest', 'state': 'running'})
             t1 = time.time()
             try:
                 with self.env.cr.savepoint():
-                    run._execute(engine, cal, params, cfg, origin=o, horizon_days=45, light=True)
+                    run._execute(engine, cal, params, cfg, origin=o, horizon_days=45, light=False)
                 run.write({'state': 'done', 'seconds': time.time() - t1})
                 made += 1
             except Exception:
@@ -146,9 +149,7 @@ class AlkhuloodhSfRun(models.Model):
         if horizon_end > cal['date'].max():
             raise UserError(self.env._('The Hijri calendar ends on %s, before the forecast horizon.', cal['date'].max().date()))
         dates = pd.date_range(origin + pd.Timedelta(days=1), horizon_end)
-        F, _shared = engine.run(origin, dates, products=not light)
-        if light:
-            F = {k: v for k, v in F.items() if k in ('company', 'branch', 'category')}
+        F, _shared = engine.run(origin, dates, products=not light, extra=cfg.extra_product_ids.ids)
         lines = engine.forecast_lines(F, origin, dates, params)
         closed = self.env['alkhuloodh.sf.override']._closed_dates()
         if closed:
@@ -164,7 +165,8 @@ class AlkhuloodhSfRun(models.Model):
             'lo': lines['low'].tolist(), 'hi': lines['high'].tolist(),
         })
         self.write({'origin': origin.date(), 'horizon_end': horizon_end.date(), 'line_count': len(lines),
-                    'engine_version': ENGINE_VERSION})
+                    'engine_version': ENGINE_VERSION,
+                    'has_products': not light})
 
     def _finish_housekeeping(self):
         """Newest successful run becomes the current one. Old nightly/manual runs lose their lines, old weekly

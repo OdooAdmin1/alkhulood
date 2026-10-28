@@ -10,6 +10,7 @@
                 <field name="level"/>
                 <field name="warehouse_id" optional="show"/>
                 <field name="categ_id" optional="show"/>
+                <field name="product_id" optional="show"/>
                 <field name="window_days"/>
                 <field name="n_days" optional="hide"/>
                 <field name="expected_total"/>
@@ -39,9 +40,11 @@
             <search>
                 <field name="warehouse_id"/>
                 <field name="categ_id"/>
+                <field name="product_id"/>
                 <filter name="company" string="Company" domain="[('level', '=', 'company')]"/>
                 <filter name="branch" string="Branch" domain="[('level', '=', 'branch')]"/>
                 <filter name="category" string="Category" domain="[('level', '=', 'category')]"/>
+                <filter name="product" string="Product" domain="[('level', '=', 'product')]"/>
                 <separator/>
                 <filter name="w7" string="First 7 days" domain="[('window_days', '=', 7)]"/>
                 <filter name="w28" string="First 28 days" domain="[('window_days', '=', 28)]"/>

@@ -49,7 +49,7 @@
     .o_sf_tablewrap { max-height: 520px; overflow: auto; border: 1px solid rgba(128, 128, 128, .3); border-radius: 8px; }
     .o_sf_table { width: 100%; border-collapse: collapse; white-space: nowrap;
         th, td { padding: 4px 9px; border-bottom: 1px solid rgba(128, 128, 128, .18); }
-        th { position: sticky; top: 0; background: var(--o-view-background-color, #f4f5f7); z-index: 1; text-align: left; font-size: 11px; text-transform: uppercase; }
+        th { position: sticky; top: 0; background: var(--o-view-background-color, #f4f5f7); color: var(--o-main-text-color, #222); z-index: 1; text-align: left; font-size: 11px; text-transform: uppercase; }
         .num { text-align: right; font-variant-numeric: tabular-nums; }
         tr.o_sf_future td { background: rgba(37, 99, 235, .05); }
         tr.o_sf_origin td { border-top: 2px dashed rgba(128, 128, 128, .8); }

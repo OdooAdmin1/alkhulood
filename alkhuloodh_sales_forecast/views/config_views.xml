@@ -37,6 +37,9 @@
                         <field name="excluded_product_ids" widget="many2many_tags"/>
                         <field name="excluded_categ_ids" widget="many2many_tags"/>
                     </group>
+                    <group string="Products">
+                        <field name="extra_product_ids" widget="many2many_tags"/>
+                    </group>
                     <group string="Reconciliation summary">
                         <field name="reconciliation_text" nolabel="1"/>
                     </group>

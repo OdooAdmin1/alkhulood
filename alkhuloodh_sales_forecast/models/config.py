@@ -28,6 +28,10 @@ class AlkhuloodhSfConfig(models.Model):
         'product.category', 'alkhuloodh_sf_config_excl_categ_rel', 'config_id', 'categ_id',
         string='Excluded categories')
 
+    extra_product_ids = fields.Many2many(
+        'product.product', 'alkhuloodh_sf_config_extra_product_rel', 'config_id', 'product_id',
+        string='Extra products to forecast', context={'active_test': False},
+        help='Products outside the top 70 by sales that you also want on the dashboard. They are forecast in every run.')
     last_load_at = fields.Datetime(readonly=True)
     last_load_range = fields.Char(readonly=True)
     last_load_rows = fields.Integer(readonly=True)

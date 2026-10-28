@@ -203,7 +203,7 @@ class Engine:
         return out
 
     # ---------- everything in one go (outside use / tests)
-    def run(self, origin, dates, products=True):
+    def run(self, origin, dates, products=True, extra=()):
         sh = self.shared(origin)
         mb, mc = self.shapes(sh)
         F = {'cell': {}, 'branch': {}, 'category': {}, 'company': {}, 'prod_rev': {}, 'prod_qty': {}}
@@ -211,7 +211,9 @@ class Engine:
             F['cell'].update(self.cells_for_branch(b, sh, mb, mc, dates))
         self.rollup(F)
         if products:
-            for p in self.top_products(sh, mc):
+            chosen = self.top_products(sh, mc)
+            chosen += [p for p in extra if p not in chosen and p in self.prod_rev and self.pcat.get(p, -1) in mc]
+            for p in chosen:
                 for nm, f in self.product_forecast(p, sh, mc, dates).items():
                     F[nm][p] = f
         return F, sh
