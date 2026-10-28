@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- Never runs by itself: next call is 5 years away. It is only queued by the
+         "Queue via scheduler" button, to test the real scheduled-action limits. -->
+    <record id="cron_spike" model="ir.cron">
+        <field name="name">Alkhuloodh forecast spike (manual trigger only)</field>
+        <field name="model_id" ref="model_alkhuloodh_spike_run"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_run_spike()</field>
+        <field name="user_id" ref="base.user_root"/>
+        <field name="interval_number">12</field>
+        <field name="interval_type">months</field>
+        <field name="nextcall" eval="(DateTime.now() + relativedelta(years=5)).strftime('%Y-%m-%d %H:%M:%S')"/>
+        <field name="active" eval="True"/>
+    </record>
+</odoo>
