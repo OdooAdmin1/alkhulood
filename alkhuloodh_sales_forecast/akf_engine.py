@@ -188,12 +188,21 @@ class Engine:
     # ---------- stage 3: top products
     def top_products(self, sh, mc, n=TOP_PRODUCTS):
         origin = sh['origin']
-        ranked = sorted(self.prod_rev, key=lambda p: self.prod_rev[p][:origin].sum(), reverse=True)[:n]
+        year_ago = origin - pd.Timedelta(days=365)
+        # biggest sellers of the LAST 12 MONTHS that are still selling (not all-time: old, replaced products drop out)
+        ranked = sorted((p for p in self.prod_rev if self.is_active(p, origin)),
+                        key=lambda p: self.prod_rev[p][year_ago:origin].sum(), reverse=True)[:n]
         return [p for p in ranked if self.pcat.get(p, -1) in mc]
+
+    def is_active(self, p, origin):
+        """Sold something in the last 56 days. A product with no recent sales gets no forecast (not a row of zeros)."""
+        return self.prod_rev[p][origin - pd.Timedelta(days=LEVEL_DAYS - 1):origin].sum() > 0
 
     def product_forecast(self, p, sh, mc, dates):
         c = self.pcat[p]
         out = {}
+        if not self.is_active(p, sh['origin']):
+            return out
         for nm, PS in (('prod_rev', self.prod_rev), ('prod_qty', self.prod_qty)):
             sr = PS[p]
             L = self.level(sr, sh)
