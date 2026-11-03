@@ -23,6 +23,7 @@ Reads POS tables only. Writes only to its own tables. Needs python pandas and nu
 - 00:30 UTC refresh the forecast. Sunday's run is kept as the frozen weekly snapshot used for accuracy.
 
 ## Known limits
-- Quantity forecast: top 70 products only. Revenue: every level.
+- Product forecasts: the 70 best sellers of the last 12 months that are still selling, plus the products listed in Configuration > Extra products. A product with no sale in the last 56 days gets no forecast.
+- Quantity forecast: those products only. Revenue: every level.
 - A confirmed Eid / Ramadan date moves the occasion pattern; the Hijri month shown in the calendar is not shifted.
 - Closures apply to all branches. Stock-outs are not handled. Access groups are placeholders.
