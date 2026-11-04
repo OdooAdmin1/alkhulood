@@ -1,4 +1,5 @@
 import logging
+import hashlib
 import time
 import traceback
 from datetime import datetime
@@ -51,6 +52,7 @@ class AlkhuloodhSfRun(models.Model):
     engine_version = fields.Char()
     error_log = fields.Text()
     has_products = fields.Boolean(string='Includes products', default=False)
+    product_sig = fields.Char(help='Fingerprint of the product selection this run was made with.')
 
     @api.depends('kind', 'origin')
     def _compute_name(self):
@@ -83,6 +85,12 @@ class AlkhuloodhSfRun(models.Model):
         return run
 
     @api.model
+    def _product_sig(self, cfg):
+        """Changes whenever the extra-product list or the product selection rule changes."""
+        key = 'top12m|' + ','.join(str(i) for i in sorted(cfg.extra_product_ids.ids))
+        return hashlib.md5(key.encode()).hexdigest()[:12]
+
+    @api.model
     def _build_backtests(self, budget_seconds=60):
         """Past forecasts for the last 12 month-ends, made with data up to each date only. They let the dashboard
         and the accuracy screen compare predicted vs actual from day one. Works until the time budget is used,
@@ -95,14 +103,15 @@ class AlkhuloodhSfRun(models.Model):
             o = (end.replace(day=1) - relativedelta(months=i - 1) - pd.Timedelta(days=1)).normalize()
             if o < end and o - pd.Timestamp(cfg.history_start) > pd.Timedelta(days=240):
                 origins.append(o)
+        sig = self._product_sig(cfg)
         done = set(self.sudo().search([('kind', '=', 'backtest'), ('state', '=', 'done'),
-                                       ('has_products', '=', True)]).mapped('origin'))
+                                       ('has_products', '=', True), ('product_sig', '=', sig)]).mapped('origin'))
         todo = [o for o in origins if o.date() not in done]
         made = 0
         for o in todo:
             if made and time.time() - t0 > budget_seconds:
                 break
-            self.sudo().search([('kind', '=', 'backtest'), ('origin', '=', o.date())]).unlink()   # older version without products
+            self.sudo().search([('kind', '=', 'backtest'), ('origin', '=', o.date())]).unlink()   # made with an older product list
             run = self.sudo().create({'kind': 'backtest', 'state': 'running'})
             t1 = time.time()
             try:
@@ -166,7 +175,8 @@ class AlkhuloodhSfRun(models.Model):
         })
         self.write({'origin': origin.date(), 'horizon_end': horizon_end.date(), 'line_count': len(lines),
                     'engine_version': ENGINE_VERSION,
-                    'has_products': not light})
+                    'has_products': not light,
+                    'product_sig': self._product_sig(cfg)})
 
     def _finish_housekeeping(self):
         """Newest successful run becomes the current one. Old nightly/manual runs lose their lines, old weekly
