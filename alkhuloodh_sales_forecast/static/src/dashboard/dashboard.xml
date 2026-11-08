@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="alkhuloodh_sales_forecast.Dashboard">
+        <div class="o_sf_dash">
+            <div class="o_sf_head">
+                <h2>Sales forecast</h2>
+                <span class="o_sf_sub" t-if="state.options.run">
+                    Actuals up to <t t-out="state.options.run.origin"/> · forecast to <t t-out="state.options.run.horizon_end"/>
+                    · last run <t t-out="state.options.run.run_date"/> (UTC)
+                </span>
+                <span class="o_sf_loading" t-if="state.loading">Loading…</span>
+            </div>
+
+            <div class="o_sf_filters">
+                <label>Branch
+                    <select t-on-change="(ev) => this.setFilter('warehouse_id', ev.target.value)"
+                            t-att-disabled="state.filters.product_id !== ''">
+                        <option value="">All branches</option>
+                        <t t-foreach="state.options.warehouses" t-as="w" t-key="w.id">
+                            <option t-att-value="w.id" t-att-selected="w.id === state.filters.warehouse_id"><t t-out="w.name"/></option>
+                        </t>
+                    </select>
+                </label>
+                <label>Category
+                    <select t-on-change="(ev) => this.setFilter('categ_id', ev.target.value)"
+                            t-att-disabled="state.filters.product_id !== ''">
+                        <option value="">All categories</option>
+                        <t t-foreach="state.options.categories" t-as="c" t-key="c.id">
+                            <option t-att-value="c.id" t-att-selected="c.id === state.filters.categ_id"><t t-out="c.name"/></option>
+                        </t>
+                    </select>
+                </label>
+                <label>Product (top 70)
+                    <select t-on-change="(ev) => this.setFilter('product_id', ev.target.value)">
+                        <option value="">All products</option>
+                        <t t-foreach="state.options.products" t-as="p" t-key="p.id">
+                            <option t-att-value="p.id" t-att-selected="p.id === state.filters.product_id"><t t-out="p.name"/></option>
+                        </t>
+                    </select>
+                </label>
+                <label>Measure
+                    <select t-on-change="(ev) => this.setFilter('metric', ev.target.value)">
+                        <option value="revenue" t-att-selected="state.filters.metric === 'revenue'">Revenue (BHD, ex-VAT)</option>
+                        <option value="qty" t-att-selected="state.filters.metric === 'qty'">Quantity (product only)</option>
+                    </select>
+                </label>
+                <label>Forecast ahead
+                    <select t-on-change="(ev) => this.setFilter('months', ev.target.value)">
+                        <t t-foreach="[1, 2, 3, 4, 5, 6]" t-as="m" t-key="m">
+                            <option t-att-value="m" t-att-selected="m === state.filters.months"><t t-out="m"/> month<t t-if="m > 1">s</t></option>
+                        </t>
+                    </select>
+                </label>
+                <label>Show past
+                    <select t-on-change="(ev) => this.setFilter('history_days', ev.target.value)">
+                        <t t-foreach="[14, 28, 60, 90]" t-as="d" t-key="d">
+                            <option t-att-value="d" t-att-selected="d === state.filters.history_days"><t t-out="d"/> days</option>
+                        </t>
+                    </select>
+                </label>
+            </div>
+
+            <div class="o_sf_notes" t-if="state.options.stale">
+                Dates, holidays or closures were changed after the last forecast run. The nightly run will apply them,
+                or press "Refresh forecast now" in Dates &amp; holidays.
+            </div>
+            <div class="o_sf_error" t-if="state.options.drift and state.options.drift.level === 'warn'">
+                <b>Accuracy warning.</b> <t t-out="state.options.drift.message"/>
+            </div>
+            <div class="o_sf_error" t-if="state.error"><t t-out="state.error"/></div>
+
+            <t t-if="state.data">
+                <div class="o_sf_notes" t-if="state.data.notes.length">
+                    <div t-foreach="state.data.notes" t-as="note" t-key="note_index"><t t-out="note"/></div>
+                </div>
+
+                <div class="o_sf_cards">
+                    <div class="o_sf_card" t-foreach="state.data.summary" t-as="s" t-key="s.title">
+                        <div class="o_sf_card_t"><t t-out="s.title"/> <small>(<t t-out="s.from"/> – <t t-out="s.to"/>)</small></div>
+                        <div class="o_sf_card_v"><t t-out="fmt(s.expected)"/> <small><t t-out="unit"/></small></div>
+                        <div class="o_sf_card_r">likely between <t t-out="fmt(s.low)"/> and <t t-out="fmt(s.high)"/></div>
+                    </div>
+                    <div class="o_sf_card" t-if="state.data.accuracy">
+                        <div class="o_sf_card_t">Accuracy, past <t t-out="state.data.accuracy.days"/> days</div>
+                        <div class="o_sf_card_v"><t t-out="state.data.accuracy.accuracy"/>%</div>
+                        <div class="o_sf_card_r">
+                            forecast was <t t-out="pct(state.data.accuracy.bias)"/> vs actual ·
+                            <t t-out="state.data.accuracy.inside"/>% of days inside the range
+                        </div>
+                    </div>
+                </div>
+
+                <div class="o_sf_tabs">
+                    <button t-foreach="[['day', 'Daily'], ['week', 'Weekly'], ['month', 'Monthly'], ['hijri', 'Hijri month']]"
+                            t-as="g" t-key="g[0]"
+                            t-att-class="'o_sf_tab' + (state.filters.gran === g[0] ? ' active' : '')"
+                            t-on-click="() => this.setFilter('gran', g[0])"><t t-out="g[1]"/></button>
+                    <span class="o_sf_spacer"/>
+                    <button class="o_sf_tab" t-on-click="exportCsv">Download CSV</button>
+                </div>
+
+                <div class="o_sf_chart" t-if="chart">
+                    <svg t-ref="svg" viewBox="0 0 1000 320" preserveAspectRatio="none"
+                         t-on-mousemove="onMove" t-on-mouseleave="onLeave">
+                        <g class="o_sf_grid">
+                            <t t-foreach="chart.yTicks" t-as="t" t-key="t_index">
+                                <line t-att-x1="chart.left" t-att-x2="chart.right" t-att-y1="t.y" t-att-y2="t.y"/>
+                                <text t-att-x="chart.left - 6" t-att-y="t.y + 4" text-anchor="end"><t t-out="t.label"/></text>
+                            </t>
+                            <t t-foreach="chart.xTicks" t-as="t" t-key="t_index">
+                                <text t-att-x="t.x" t-att-y="chart.bottom + 18" text-anchor="middle"><t t-out="t.label"/></text>
+                            </t>
+                        </g>
+                        <path class="o_sf_band" t-att-d="chart.band"/>
+                        <line t-if="chart.originX !== null" class="o_sf_originline" t-att-x1="chart.originX" t-att-x2="chart.originX"
+                              t-att-y1="chart.top" t-att-y2="chart.bottom"/>
+                        <path class="o_sf_line_exp" t-att-d="chart.expected"/>
+                        <path class="o_sf_line_act" t-att-d="chart.actual"/>
+                        <t t-foreach="chart.events" t-as="e" t-key="e_index">
+                            <circle class="o_sf_evdot" t-att-cx="e.x" t-att-cy="e.y" r="3.5"/>
+                        </t>
+                        <line t-if="state.hover !== null" class="o_sf_hoverline" t-att-x1="chart.x(state.hover)" t-att-x2="chart.x(state.hover)"
+                              t-att-y1="chart.top" t-att-y2="chart.bottom"/>
+                    </svg>
+                    <div class="o_sf_tip" t-if="hoverRow" t-att-style="hoverStyle">
+                        <b><t t-out="hoverRow.label"/></b>
+                        <t t-if="hoverRow.hijri"> · <t t-out="hoverRow.hijri"/></t>
+                        <div t-if="hoverRow.event" class="o_sf_tip_ev"><t t-out="hoverRow.event"/></div>
+                        <div>Expected <b><t t-out="fmt(hoverRow.expected)"/></b></div>
+                        <div>Range <t t-out="fmt(hoverRow.low)"/> – <t t-out="fmt(hoverRow.high)"/></div>
+                        <div t-if="hoverRow.actual !== null">Actual <b><t t-out="fmt(hoverRow.actual)"/></b>
+                            <span t-if="hoverRow.error_pct !== null" t-att-class="errClass(hoverRow)"> (<t t-out="pct(hoverRow.error_pct)"/>)</span></div>
+                        <div class="o_sf_tip_cmp">Last year <t t-out="fmt(hoverRow.ly)"/> · Same Hijri date <t t-out="fmt(hoverRow.hly)"/></div>
+                    </div>
+                    <div class="o_sf_legend">
+                        <span><i class="o_sf_sw o_sf_sw_band"/> likely range (low – high)</span>
+                        <span><i class="o_sf_sw o_sf_sw_exp"/> expected</span>
+                        <span><i class="o_sf_sw o_sf_sw_act"/> actual</span>
+                        <span><i class="o_sf_evdot_l"/> Hijri occasion</span>
+                        <span>dashed line = last day of actuals</span>
+                    </div>
+                </div>
+
+                <div class="o_sf_tablewrap">
+                    <table class="o_sf_table">
+                        <thead>
+                            <tr>
+                                <th><t t-out="granLabel"/></th>
+                                <th t-if="state.filters.gran === 'day'">Day</th>
+                                <th t-if="state.filters.gran === 'day'">Hijri date</th>
+                                <th>Occasion</th>
+                                <th class="num">Low</th>
+                                <th class="num">Expected</th>
+                                <th class="num">High</th>
+                                <th class="num">Actual</th>
+                                <th class="num">Error</th>
+                                <th class="num">Error %</th>
+                                <th class="num" title="Same weekday, 7 days earlier (period: shifted by 7 days)">Last week</th>
+                                <th class="num" title="Same date one month earlier">Last month</th>
+                                <th class="num" title="Same date one year earlier">Last year</th>
+                                <th class="num" title="Same Hijri day and month, one Hijri year earlier">Same Hijri date last year</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr t-foreach="state.data.rows" t-as="r" t-key="r.date" t-att-class="rowClass(r, r_index)">
+                                <td><t t-out="r.label"/><small t-if="state.filters.gran !== 'day'"> · <t t-out="r.n"/>d</small></td>
+                                <td t-if="state.filters.gran === 'day'"><t t-out="r.dow"/></td>
+                                <td t-if="state.filters.gran === 'day'"><t t-out="r.hijri"/></td>
+                                <td><t t-out="r.event"/></td>
+                                <td class="num"><t t-out="fmt(r.low)"/></td>
+                                <td class="num"><b><t t-out="fmt(r.expected)"/></b></td>
+                                <td class="num"><t t-out="fmt(r.high)"/></td>
+                                <td class="num"><t t-out="fmt(r.actual)"/></td>
+                                <td class="num"><t t-out="fmt(r.error)"/></td>
+                                <td t-att-class="'num ' + errClass(r)"><t t-out="pct(r.error_pct)"/></td>
+                                <td class="num"><t t-out="fmt(r.lw)"/></td>
+                                <td class="num"><t t-out="fmt(r.lm)"/></td>
+                                <td class="num"><t t-out="fmt(r.ly)"/></td>
+                                <td class="num"><t t-out="fmt(r.hly)"/></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p class="o_sf_foot">
+                    Error = actual − expected. Past days show the forecast that was made before that day (so it is a fair test).
+                    Ranges for weeks and months are measured on past forecasts and are wider than daily ranges added together.
+                    Revenue is POS gross sales before returns, excluding VAT. Figures in <t t-out="unit"/>.
+                </p>
+            </t>
+        </div>
+    </t>
+</templates>
