@@ -10,11 +10,17 @@
                             confirm="Rebuild all daily actuals from the POS data? This only reads POS and rewrites this module's own table."/>
                     <button name="action_load_recent" type="object" string="Refresh recent days"/>
                     <button name="action_run_forecast" type="object" string="Run forecast now"/>
-                    <button name="action_build_backtests" type="object" string="Build past forecasts (backtest)"/>
+                    <button name="action_build_backtests" type="object" string="Build past forecasts (backtest)"
+                            help="Builds in the background. Progress is shown below."/>
+                    <button name="action_build_backtests_now" type="object" string="Build now (wait here)"
+                            help="Fallback: works for about 25 seconds in this page. Press again to continue."/>
                     <button name="action_refresh_accuracy" type="object" string="Refresh accuracy"/>
                     <button name="action_reconcile" type="object" string="Reconciliation summary"/>
                 </header>
                 <sheet>
+                    <group string="Past forecasts">
+                        <field name="bt_progress" nolabel="1"/>
+                    </group>
                     <group string="Accuracy check">
                         <field name="drift_message" nolabel="1"/>
                     </group>

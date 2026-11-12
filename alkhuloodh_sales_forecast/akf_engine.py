@@ -22,6 +22,10 @@ import pandas as pd
 K_N, V0 = 2.0, 300.0          # shrinkage constants
 LEVEL_DAYS = 56               # plain days used for the current level
 TOP_PRODUCTS = 70
+PAIR_STRONG_DAYS = 100        # product in a branch: sold on at least this many of the last 365 days -> own model
+PAIR_MIN_DAYS = 28            # ... at least this many -> share of the product's all-branch forecast; fewer -> no forecast
+PAIR_SHARE_DAYS = 91          # window used to measure a branch's share of a product's sales
+PAIR_WIDEN = {'model': 1.3, 'alloc': 1.5}   # provisional range stretch for product-in-branch series (see Accuracy screen)
 
 
 def event_key(r):
@@ -68,6 +72,15 @@ class Engine:
         self.pcat = sales.sort_values('day').groupby('product_id').categ_id.first()
         self.prod_rev = {p: g.groupby('day').rev.sum().reindex(D).fillna(0.0) for p, g in sales.groupby('product_id')}
         self.prod_qty = {p: g.groupby('day').qty.sum().reindex(D).fillna(0.0) for p, g in sales.groupby('product_id')}
+        # product x branch: kept as small frames, turned into daily series only for the products that are forecast
+        self._pair_frames = {k: g[['day', 'rev', 'qty']] for k, g in sales.groupby(['warehouse_id', 'product_id'])}
+        self._pair_by_product = {}
+        for (b, p) in self._pair_frames:
+            self._pair_by_product.setdefault(p, []).append(b)
+        self._pair_cache = {}
+        self._pshape = {}
+        self.pair_method = {}
+        self.pair_price = {}
 
     # ---------- stage 0: shared learning (weekday factors, Hijri-month index, occasion multipliers)
     def _weekday_factors(self, origin):
@@ -194,6 +207,19 @@ class Engine:
                         key=lambda p: self.prod_rev[p][year_ago:origin].sum(), reverse=True)[:n]
         return [p for p in ranked if self.pcat.get(p, -1) in mc]
 
+    def chosen_products(self, origin, extra=()):
+        """The products forecast at `origin`: the 70 best sellers of the last 12 months that are still selling, plus the
+        extra products that are still selling. Cheap: needs no shapes, so it can be used to see what a run should hold."""
+        origin = pd.Timestamp(origin)
+        cats = {c for c in self.ct if c != -1 and self.ct[c][:origin].sum() > 0}
+        year_ago = origin - pd.Timedelta(days=365)
+        ranked = sorted((p for p in self.prod_rev if self.is_active(p, origin)),
+                        key=lambda p: self.prod_rev[p][year_ago:origin].sum(), reverse=True)[:TOP_PRODUCTS]
+        chosen = [p for p in ranked if self.pcat.get(p, -1) in cats]
+        chosen += [p for p in extra if p not in chosen and p in self.prod_rev and self.pcat.get(p, -1) in cats
+                   and self.is_active(p, origin)]
+        return chosen
+
     def is_active(self, p, origin):
         """Sold something in the last 56 days. A product with no recent sales gets no forecast (not a row of zeros)."""
         return self.prod_rev[p][origin - pd.Timedelta(days=LEVEL_DAYS - 1):origin].sum() > 0
@@ -208,23 +234,101 @@ class Engine:
             L = self.level(sr, sh)
             if np.isnan(L):
                 continue
-            out[nm] = self.fcst(L, dates, sh, self.blend(self.raw_shape(sr, sh), mc[c]))
+            shape = self.blend(self.raw_shape(sr, sh), mc[c])
+            self._pshape[(nm, p)] = shape
+            out[nm] = self.fcst(L, dates, sh, shape)
+        return out
+
+    # ---------- stage 4: product in one branch
+    def _pair_series(self, b, p):
+        key = (b, p)
+        if key not in self._pair_cache:
+            f = self._pair_frames[key].set_index('day')
+            self._pair_cache[key] = (f['rev'].reindex(self.DAYS).fillna(0.0), f['qty'].reindex(self.DAYS).fillna(0.0))
+        return self._pair_cache[key]
+
+    def pair_class(self, b, p, origin):
+        """'model' (own history is long enough), 'alloc' (share of the product forecast) or None (not enough sales)."""
+        f = self._pair_frames.get((b, p))
+        if f is None or b not in self.br:
+            return None
+        sold = f[(f['rev'] > 0) | (f['qty'] > 0)]
+        recent = sold[(sold['day'] > origin - pd.Timedelta(days=LEVEL_DAYS)) & (sold['day'] <= origin)]
+        if recent.empty:
+            return None
+        n = int(((sold['day'] > origin - pd.Timedelta(days=365)) & (sold['day'] <= origin)).sum())
+        return 'model' if n >= PAIR_STRONG_DAYS else 'alloc' if n >= PAIR_MIN_DAYS else None
+
+    def pair_forecasts(self, p, sh, dates, prod_f):
+        """Forecast of product p in each branch. prod_f = {'prod_rev': Series, 'prod_qty': Series} (all branches)."""
+        origin = sh['origin']
+        out = {'pair_rev': {}, 'pair_qty': {}}
+        for b in self._pair_by_product.get(p, []):
+            cls = self.pair_class(b, p, origin)
+            if cls is None:
+                continue
+            rev_s, qty_s = self._pair_series(b, p)
+            for nm, pnm, sr, PS in (('pair_rev', 'prod_rev', rev_s, self.prod_rev[p]), ('pair_qty', 'prod_qty', qty_s, self.prod_qty[p])):
+                if pnm not in prod_f:
+                    continue
+                how = cls
+                fc = None
+                if cls == 'model':
+                    L = self.level(sr, sh)
+                    if not np.isnan(L):
+                        shape = self.blend(self.raw_shape(sr, sh), self._pshape[(pnm, p)])
+                        fc = self.fcst(L, dates, sh, shape)
+                    else:
+                        how = 'alloc'
+                if fc is None:
+                    tot = float(PS[origin - pd.Timedelta(days=PAIR_SHARE_DAYS - 1):origin].sum())
+                    part = float(sr[origin - pd.Timedelta(days=PAIR_SHARE_DAYS - 1):origin].sum())
+                    if tot <= 0 or part <= 0:
+                        continue
+                    fc = prod_f[pnm] * (part / tot)
+                out[nm][(b, p)] = fc
+                self.pair_method[(b, p)] = how
+                if nm == 'pair_rev':      # average price: turns unit counting noise into revenue noise
+                    win = slice(origin - pd.Timedelta(days=PAIR_SHARE_DAYS - 1), origin)
+                    q = float(qty_s[win].sum())
+                    self.pair_price[(b, p)] = float(rev_s[win].sum()) / q if q > 0 else 1.0
         return out
 
     # ---------- everything in one go (outside use / tests)
     def run(self, origin, dates, products=True, extra=()):
         sh = self.shared(origin)
         mb, mc = self.shapes(sh)
-        F = {'cell': {}, 'branch': {}, 'category': {}, 'company': {}, 'prod_rev': {}, 'prod_qty': {}}
+        F = {'cell': {}, 'branch': {}, 'category': {}, 'company': {}, 'prod_rev': {}, 'prod_qty': {},
+             'pair_rev': {}, 'pair_qty': {}}
+        self.pair_method = {}
+        self.pair_price = {}
         for b in mb:
             F['cell'].update(self.cells_for_branch(b, sh, mb, mc, dates))
         self.rollup(F)
         if products:
-            chosen = self.top_products(sh, mc)
-            chosen += [p for p in extra if p not in chosen and p in self.prod_rev and self.pcat.get(p, -1) in mc]
-            for p in chosen:
-                for nm, f in self.product_forecast(p, sh, mc, dates).items():
-                    F[nm][p] = f
+            self._products_into(F, self.chosen_products(origin, extra), sh, mc, dates)
+        return F, sh
+
+    def _products_into(self, F, chosen, sh, mc, dates):
+        for p in chosen:
+            if self.pcat.get(p, -1) not in mc:
+                continue
+            pf = self.product_forecast(p, sh, mc, dates)
+            for nm, f in pf.items():
+                F[nm][p] = f
+            if pf:
+                for nm, d in self.pair_forecasts(p, sh, dates, pf).items():
+                    F[nm].update(d)
+
+    def run_products(self, origin, dates, products):
+        """Only the given products (product level and product-in-branch), as run() would make them. Used to add products
+        to a forecast that already exists without redoing the rest."""
+        sh = self.shared(origin)
+        _mb, mc = self.shapes(sh)
+        F = {'prod_rev': {}, 'prod_qty': {}, 'pair_rev': {}, 'pair_qty': {}}
+        self.pair_method = {}
+        self.pair_price = {}
+        self._products_into(F, list(products), sh, mc, dates)
         return F, sh
 
     @staticmethod
@@ -252,7 +356,10 @@ class RangeParams:
         self.t = {(r.level, int(r.B), r.kind, r.bucket): (float(r.q10), float(r.q50), float(r.q90), float(r.widen))
                   for r in df.itertuples()}
 
-    def get(self, level, B, kind, bucket):
+    def get(self, level, B, kind, bucket, method='model'):
+        if level == 'pair':      # no measured parameters yet: use the product ones, stretched
+            q10, q50, q90, k = self.get('product', B, kind, bucket)
+            return q10, q50, q90, k * PAIR_WIDEN.get(method, PAIR_WIDEN['alloc'])
         other = 'near' if bucket == 'far' else 'far'
         for k in ((level, B, kind, bucket), (level, B, kind, other), (level, B, 'event', bucket)):
             if k in self.t:
@@ -260,15 +367,19 @@ class RangeParams:
         return RANGE_FALLBACK
 
 
-def _band(f_values, q10, q90, k):
+def _band(f_values, q10, q90, k, unit=None):
     low = np.clip(f_values - (f_values - f_values * q10) * k, 0, None)
     high = f_values + (f_values * q90 - f_values) * k
+    if unit:        # small series of counted units: never narrower than the natural spread of counting
+        spread = 1.28 * np.sqrt(f_values * unit)     # unit = 1 for quantity, average price for revenue
+        low = np.clip(np.minimum(low, f_values - spread), 0, None)
+        high = np.maximum(high, f_values + spread)
     return low, high
 
 
 _LEVEL_OUT = {'cell': 'cell', 'branch': 'branch', 'category': 'category', 'company': 'company',
-              'prod_rev': 'product', 'prod_qty': 'product'}
-_METRIC = {'prod_qty': 'qty'}
+              'prod_rev': 'product', 'prod_qty': 'product', 'pair_rev': 'pair', 'pair_qty': 'pair'}
+_METRIC = {'prod_qty': 'qty', 'pair_qty': 'qty'}
 
 
 def _lines(engine, F, origin, dates, params):
@@ -281,11 +392,18 @@ def _lines(engine, F, origin, dates, params):
     for lvl, series in F.items():
         if not series:
             continue
-        q = [params.get(lvl, 1, 'event' if e else 'plain', b) for e, b in zip(ev, bucket)]
-        q10 = np.array([x[0] for x in q]); q90 = np.array([x[2] for x in q]); k = np.array([x[3] for x in q])
+        is_pair = lvl.startswith('pair')
+        qs = {}
         for sid, f in series.items():
+            method = engine.pair_method.get(sid, 'alloc') if is_pair else 'model'
+            if method not in qs:
+                q = [params.get('pair' if is_pair else lvl, 1, 'event' if e else 'plain', b, method) if is_pair
+                     else params.get(lvl, 1, 'event' if e else 'plain', b) for e, b in zip(ev, bucket)]
+                qs[method] = (np.array([x[0] for x in q]), np.array([x[2] for x in q]), np.array([x[3] for x in q]))
+            q10, q90, k = qs[method]
             fv = f.values.astype(float)
-            low, high = _band(fv, q10, q90, k)
+            unit = (1.0 if lvl == 'pair_qty' else engine.pair_price.get(sid, 1.0)) if is_pair else None
+            low, high = _band(fv, q10, q90, k, unit=unit)
             if lvl == 'cell':
                 wh, ca, pr = sid[0], sid[1], None
             elif lvl == 'branch':
@@ -294,13 +412,16 @@ def _lines(engine, F, origin, dates, params):
                 wh, ca, pr = None, sid, None
             elif lvl == 'company':
                 wh, ca, pr = None, None, None
+            elif is_pair:
+                wh, ca, pr = sid[0], engine.pcat.get(sid[1], -1), sid[1]
             else:
                 wh, ca, pr = None, engine.pcat.get(sid, -1), sid
             if ca is not None and ca == -1:
                 ca = None
             parts.append(pd.DataFrame({
                 'date': dates, 'level': _LEVEL_OUT[lvl], 'warehouse_id': wh, 'categ_id': ca, 'product_id': pr,
-                'metric': _METRIC.get(lvl, 'revenue'), 'expected': fv, 'low': low, 'high': high}))
+                'metric': _METRIC.get(lvl, 'revenue'), 'expected': fv, 'low': low, 'high': high,
+                'method': engine.pair_method.get(sid) if is_pair else None}))
     return pd.concat(parts, ignore_index=True)
 
 
