@@ -14,10 +14,10 @@
             <div class="o_sf_filters">
                 <label>Branch
                     <select t-on-change="(ev) => this.setFilter('warehouse_id', ev.target.value)"
-                            t-att-disabled="state.filters.product_id !== ''">
+                            t-att-value="state.filters.warehouse_id">
                         <option value="">All branches</option>
                         <t t-foreach="state.options.warehouses" t-as="w" t-key="w.id">
-                            <option t-att-value="w.id" t-att-selected="w.id === state.filters.warehouse_id"><t t-out="w.name"/></option>
+                            <option t-att-value="w.id"><t t-out="w.name"/></option>
                         </t>
                     </select>
                 </label>
@@ -30,7 +30,7 @@
                         </t>
                     </select>
                 </label>
-                <label>Product (top 70)
+                <label>Product
                     <select t-on-change="(ev) => this.setFilter('product_id', ev.target.value)">
                         <option value="">All products</option>
                         <t t-foreach="state.options.products" t-as="p" t-key="p.id">
@@ -73,6 +73,9 @@
                 <div class="o_sf_notes" t-if="state.data.notes.length">
                     <div t-foreach="state.data.notes" t-as="note" t-key="note_index"><t t-out="note"/></div>
                 </div>
+                <div class="o_sf_info" t-if="state.data.info and state.data.info.length">
+                    <div t-foreach="state.data.info" t-as="line" t-key="line_index"><t t-out="line"/></div>
+                </div>
 
                 <div class="o_sf_cards">
                     <div class="o_sf_card" t-foreach="state.data.summary" t-as="s" t-key="s.title">
@@ -88,6 +91,56 @@
                             <t t-out="state.data.accuracy.inside"/>% of days inside the range
                         </div>
                     </div>
+                </div>
+
+                <div class="o_sf_branches" t-if="branches">
+                    <div class="o_sf_bhead">
+                        <b>How this product sold in each branch</b>
+                        <span>last <t t-out="branches.days"/> days (<t t-out="branches.from"/> – <t t-out="branches.to"/>), compared with the <t t-out="branches.days"/> days before.
+                            Bars show <t t-out="isQty ? 'quantity' : 'revenue'"/>. Click a branch to see its forecast.</span>
+                    </div>
+                    <div class="o_sf_tablewrap o_sf_btable">
+                        <table class="o_sf_table">
+                            <thead>
+                                <tr>
+                                    <th>Branch</th>
+                                    <th class="o_sf_barcol"><t t-out="isQty ? 'Quantity' : 'Revenue'"/></th>
+                                    <th class="num">Revenue (BHD)</th>
+                                    <th class="num">Quantity</th>
+                                    <th class="num">Share</th>
+                                    <th class="num">vs previous period</th>
+                                    <th class="num" t-att-title="'Expected ' + (isQty ? 'quantity' : 'revenue') + ', next 28 days'">Next 28 days</th>
+                                    <th>Forecast type</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-att-class="'o_sf_brow' + (state.filters.warehouse_id === '' ? ' o_sf_sel' : '')"
+                                    t-on-click="() => this.pickBranch('')">
+                                    <td><b>All branches</b></td>
+                                    <td class="o_sf_barcol"/>
+                                    <td class="num"><b><t t-out="fmt(branches.total_rev, 2)"/></b></td>
+                                    <td class="num"><b><t t-out="fmt(branches.total_qty, 1)"/></b></td>
+                                    <td class="num">100%</td>
+                                    <td class="num"/><td class="num"/><td/>
+                                </tr>
+                                <tr t-foreach="branches.rows" t-as="b" t-key="b.id"
+                                    t-att-class="'o_sf_brow' + (state.filters.warehouse_id === b.id ? ' o_sf_sel' : '')"
+                                    t-on-click="() => this.pickBranch(b.id)">
+                                    <td><t t-out="b.name"/></td>
+                                    <td class="o_sf_barcol"><div class="o_sf_bar" t-att-style="barStyle(b)"/></td>
+                                    <td class="num"><t t-out="fmt(b.rev, 2)"/></td>
+                                    <td class="num"><t t-out="fmt(b.qty, 1)"/></td>
+                                    <td class="num"><t t-out="branchShare(b) === null ? '–' : fmt(branchShare(b), 1) + '%'"/></td>
+                                    <td t-att-class="'num ' + chgClass(branchChg(b))"><t t-out="pct(branchChg(b))"/></td>
+                                    <td class="num"><t t-out="branchFc(b) === null ? '–' : fmt(branchFc(b), isQty ? 1 : 0)"/></td>
+                                    <td><small><t t-out="methodLabel(b.method)"/></small></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <p class="o_sf_foot" t-if="!branches.rows.length">This product has no sales in any branch in this period.</p>
+                    <p class="o_sf_foot" t-else="">Branches with no sales of this product in the two periods are not listed. "Not enough sales" means the branch sold
+                        it on fewer than 28 days in the last year, so no forecast is made for it.</p>
                 </div>
 
                 <div class="o_sf_tabs">

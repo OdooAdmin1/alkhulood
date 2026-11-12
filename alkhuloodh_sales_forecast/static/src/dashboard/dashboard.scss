@@ -16,6 +16,17 @@
     .o_sf_error { background: rgba(220, 38, 38, .12); border-left: 4px solid #dc2626; padding: 10px 12px; margin: 8px 0; }
     .o_sf_notes { background: rgba(217, 119, 6, .12); border-left: 4px solid #d97706; padding: 8px 12px; margin: 8px 0; }
 
+    .o_sf_info { background: rgba(37, 99, 235, .10); border-left: 4px solid #2563eb; padding: 8px 12px; margin: 8px 0; }
+
+    .o_sf_branches { margin: 4px 0 16px;
+        .o_sf_bhead { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; margin-bottom: 6px;
+            span { opacity: .7; font-size: 12px; } }
+        .o_sf_btable { max-height: 340px; }
+        .o_sf_brow { cursor: pointer; &:hover td { background: rgba(37, 99, 235, .08); }
+            &.o_sf_sel td { background: rgba(37, 99, 235, .14); font-weight: 600; } }
+        .o_sf_barcol { width: 28%; min-width: 150px; }
+        .o_sf_bar { height: 12px; background: #d9480f; border-radius: 2px; min-width: 2px; } }
+
     .o_sf_cards { display: flex; flex-wrap: wrap; gap: 12px; margin: 10px 0 14px;
         .o_sf_card { flex: 1 1 210px; border: 1px solid rgba(128, 128, 128, .35); border-radius: 8px; padding: 10px 14px;
             .o_sf_card_t { font-size: 12px; opacity: .75; }

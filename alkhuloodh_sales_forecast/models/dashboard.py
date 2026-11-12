@@ -106,7 +106,9 @@ class AlkhuloodhSfDashboard(models.AbstractModel):
             return {'error': self.env._('Quantity forecasts are made per product. Pick a product, or switch to Revenue.')}
 
         # which stored series
-        if pr:
+        if pr and wh:
+            level, cond, args, plevel = 'pair', 'l.product_id = %s AND l.warehouse_id = %s', [pr, wh], 'pair'
+        elif pr:
             level, cond, args, plevel = 'product', 'l.product_id = %s', [pr], ('prod_qty' if metric == 'qty' else 'prod_rev')
         elif wh and ca:
             level, cond, args, plevel = 'cell', 'l.warehouse_id = %s AND l.categ_id = %s', [wh, ca], 'cell'
@@ -125,17 +127,21 @@ class AlkhuloodhSfDashboard(models.AbstractModel):
         end = min(horizon_end, pd.Timestamp(end_m.year, end_m.month, pycal.monthrange(end_m.year, end_m.month)[1]))
         idx = pd.date_range(start, end)
 
-        # predictions: for every day the latest forecast that was made before that day
+        # predictions: past days show the latest forecast made before that day; future days only the current run
+        # (a series without a current forecast, e.g. a branch with too few sales, must not show an older run's numbers)
         cr.execute("""
-            SELECT DISTINCT ON (l.date) l.date, l.expected, l.low, l.high, r.origin
+            SELECT DISTINCT ON (l.date) l.date, l.expected, l.low, l.high, r.origin, l.method
               FROM alkhuloodh_sf_forecast_line l
               JOIN alkhuloodh_sf_run r ON r.id = l.run_id
              WHERE r.state = 'done' AND r.origin < l.date AND l.date BETWEEN %s AND %s
+               AND (l.date <= %s OR r.id = %s)
                AND l.level = %s AND l.metric = %s AND """ + cond + """
-             ORDER BY l.date, r.origin DESC""", [start.date(), end.date(), level, sel_metric] + args)
+             ORDER BY l.date, r.origin DESC""", [start.date(), end.date(), origin.date(), run.id, level, sel_metric] + args)
         prow = cr.fetchall()
-        pred = pd.DataFrame(prow, columns=['date', 'expected', 'low', 'high', 'made']).set_index('date') \
-            if prow else pd.DataFrame(columns=['expected', 'low', 'high', 'made'])
+        pred = pd.DataFrame(prow, columns=['date', 'expected', 'low', 'high', 'made', 'method']).set_index('date') \
+            if prow else pd.DataFrame(columns=['expected', 'low', 'high', 'made', 'method'])
+        methods = {m for m in pred['method'].tolist() if m}
+        pair_method = 'alloc' if 'alloc' in methods else 'model'
         pred.index = pd.to_datetime(pred.index)
         pred = pred.reindex(idx)
         for c in ('expected', 'low', 'high'):
@@ -146,6 +152,8 @@ class AlkhuloodhSfDashboard(models.AbstractModel):
         acond, aargs = [], []
         if pr:
             acond.append('product_id = %s'); aargs.append(pr)
+            if wh:
+                acond.append('warehouse_id = %s'); aargs.append(wh)
         else:
             if wh:
                 acond.append('warehouse_id = %s'); aargs.append(wh)
@@ -186,7 +194,10 @@ class AlkhuloodhSfDashboard(models.AbstractModel):
         def band(E, n, event, first_day):
             B = 1 if n == 1 else 7 if n <= 10 else 28
             bucket = 'near' if (first_day - origin).days < akf_engine.NEAR_DAYS else 'far'
-            q10, _q50, q90, k = params.get(plevel, B, 'event' if event else 'plain', bucket)
+            if plevel == 'pair':
+                q10, _q50, q90, k = params.get('pair', B, 'event' if event else 'plain', bucket, pair_method)
+            else:
+                q10, _q50, q90, k = params.get(plevel, B, 'event' if event else 'plain', bucket)
             return max(E - (E - E * q10) * k, 0.0), E + (E * q90 - E) * k
 
         nd = 1 if sel_metric == 'qty' else 2
@@ -274,13 +285,83 @@ class AlkhuloodhSfDashboard(models.AbstractModel):
             accuracy = {'days': int(len(both)), 'accuracy': _num((1 - np.abs(act[both] - exp[both]).sum() / a_s) * 100, 1),
                         'bias': _num((e_s / a_s - 1) * 100, 1),
                         'inside': _num(float(((act[both] >= pred['low'].values[both]) & (act[both] <= pred['high'].values[both])).mean() * 100), 0)}
-        notes = []
+        notes, info = [], []
         past = idx <= origin
-        if past.any() and np.isnan(exp[past]).all():
+        no_pair = False
+        if level == 'pair':
+            cr.execute("""SELECT COUNT(*) FROM alkhuloodh_sf_forecast_line
+                           WHERE run_id = %s AND level = 'pair' AND product_id = %s AND warehouse_id = %s AND metric = %s""",
+                       (run.id, pr, wh, sel_metric))
+            no_pair = not cr.fetchone()[0]
+        if no_pair:
+            notes.append(self.env._('There are not enough sales of this product in this branch to forecast it (fewer than 28 selling days in the last year, or no sale in the last 8 weeks). The actual sales are shown.'))
+        elif past.any() and np.isnan(exp[past]).all():
             notes.append(self.env._('No past forecasts are stored for this period yet. Press "Build past forecasts" in Configuration to compare predicted and actual.'))
-        if pr and (wh or ca):
-            notes.append(self.env._('Product forecasts are for all branches together, so the branch and category filters are ignored.'))
+        if pr and ca:
+            notes.append(self.env._('A product belongs to one category, so the category filter is ignored when a product is picked.'))
+        if level == 'pair' and not no_pair:
+            if pair_method == 'alloc':
+                info.append(self.env._("This branch sells the product on too few days for its own model. The forecast is the product's all-branch forecast split by this branch's recent share of its sales, so it is an estimate."))
+            else:
+                info.append(self.env._("Forecast from this branch's own sales history for the product. Branch forecasts are made separately, so they may not add up exactly to the all-branch product forecast."))
+        elif level == 'product':
+            info.append(self.env._('All branches combined. Pick a branch to see this product in one branch.'))
         return {
-            'rows': rows, 'summary': summary, 'accuracy': accuracy, 'notes': notes, 'metric': sel_metric,
+            'rows': rows, 'summary': summary, 'accuracy': accuracy, 'notes': notes, 'info': info, 'metric': sel_metric,
             'origin': str(origin.date()), 'level': level, 'filters': f,
+            'branches': self._branch_breakdown(run, pr, origin, f['history_days'], sel_metric) if pr else None,
         }
+
+    @api.model
+    def _branch_breakdown(self, run, product_id, origin, days, metric):
+        """How one product sold in every branch over the chosen past period (revenue and quantity), against the
+        period before it, plus each branch's expected sales for the next 28 days where a forecast exists."""
+        cr = self.env.cr
+        origin = pd.Timestamp(origin)
+        cur_start = origin - pd.Timedelta(days=days - 1)
+        prev_start = cur_start - pd.Timedelta(days=days)
+        cr.execute("""SELECT warehouse_id, (date >= %s) AS cur, SUM(revenue), SUM(qty)
+                         FROM alkhuloodh_sf_actual_daily
+                        WHERE product_id = %s AND date BETWEEN %s AND %s
+                        GROUP BY 1, 2""",
+                   (cur_start.date(), product_id, prev_start.date(), origin.date()))
+        acc = {}
+        for wid, cur, rev, qty in cr.fetchall():
+            d = acc.setdefault(wid, {'rev': 0.0, 'qty': 0.0, 'rev_prev': 0.0, 'qty_prev': 0.0})
+            suffix = '' if cur else '_prev'
+            d['rev' + suffix] = float(rev or 0)
+            d['qty' + suffix] = float(qty or 0)
+        cr.execute("""SELECT warehouse_id, metric, SUM(expected), MIN(method)
+                         FROM alkhuloodh_sf_forecast_line
+                        WHERE run_id = %s AND level = 'pair' AND product_id = %s AND date > %s AND date <= %s
+                        GROUP BY warehouse_id, metric""",
+                   (run.id, product_id, origin.date(), (origin + pd.Timedelta(days=28)).date()))
+        fc = {}
+        for wid, m, e, method in cr.fetchall():
+            d = fc.setdefault(wid, {})
+            d['fc_' + ('qty' if m == 'qty' else 'rev')] = float(e or 0)
+            d['method'] = method
+        ids = sorted(set(acc) | set(fc))
+        names = {w.id: w.name for w in self.env['stock.warehouse'].sudo().browse(ids).exists()}
+        tot = {k: sum(acc.get(w, {}).get(k, 0.0) for w in ids) for k in ('rev', 'qty')}
+
+        def chg(now, before):
+            return round((now / before - 1) * 100, 1) if before else None
+        rows = []
+        for w in ids:
+            if w not in names:
+                continue
+            a = acc.get(w, {'rev': 0.0, 'qty': 0.0, 'rev_prev': 0.0, 'qty_prev': 0.0})
+            x = fc.get(w, {})
+            rows.append({
+                'id': w, 'name': names[w],
+                'rev': _num(a['rev'], 2), 'qty': _num(a['qty'], 1),
+                'share_rev': _num(a['rev'] / tot['rev'] * 100, 1) if tot['rev'] else None,
+                'share_qty': _num(a['qty'] / tot['qty'] * 100, 1) if tot['qty'] else None,
+                'chg_rev': chg(a['rev'], a['rev_prev']), 'chg_qty': chg(a['qty'], a['qty_prev']),
+                'fc_rev': _num(x.get('fc_rev'), 2), 'fc_qty': _num(x.get('fc_qty'), 1), 'method': x.get('method'),
+            })
+        key = 'qty' if metric == 'qty' else 'rev'
+        rows.sort(key=lambda r: -(r[key] or 0))
+        return {'rows': rows, 'days': days, 'from': str(cur_start.date()), 'to': str(origin.date()),
+                'total_rev': _num(tot['rev'], 2), 'total_qty': _num(tot['qty'], 1)}

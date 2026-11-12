@@ -45,6 +45,7 @@
                 <filter name="branch" string="Branch" domain="[('level', '=', 'branch')]"/>
                 <filter name="category" string="Category" domain="[('level', '=', 'category')]"/>
                 <filter name="product" string="Product" domain="[('level', '=', 'product')]"/>
+                <filter name="pair" string="Product in branch" domain="[('level', '=', 'pair')]"/>
                 <separator/>
                 <filter name="w7" string="First 7 days" domain="[('window_days', '=', 7)]"/>
                 <filter name="w28" string="First 28 days" domain="[('window_days', '=', 28)]"/>

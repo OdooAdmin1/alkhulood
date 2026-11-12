@@ -64,6 +64,7 @@
                 <field name="low"/>
                 <field name="expected"/>
                 <field name="high"/>
+                <field name="method" optional="show"/>
             </list>
         </field>
     </record>
@@ -83,6 +84,7 @@
                 <filter name="lvl_category" string="Category" domain="[('level', '=', 'category')]"/>
                 <filter name="lvl_cell" string="Branch x category" domain="[('level', '=', 'cell')]"/>
                 <filter name="lvl_product" string="Product" domain="[('level', '=', 'product')]"/>
+                <filter name="lvl_pair" string="Product in branch" domain="[('level', '=', 'pair')]"/>
                 <separator/>
                 <filter name="m_revenue" string="Revenue" domain="[('metric', '=', 'revenue')]"/>
                 <filter name="m_qty" string="Quantity" domain="[('metric', '=', 'qty')]"/>

@@ -39,7 +39,8 @@ class AlkhuloodhSfAccuracy(models.Model):
     run_id = fields.Many2one('alkhuloodh.sf.run', string='Forecast run', ondelete='cascade', index=True)
     origin = fields.Date(string='Forecast made on', index=True)
     kind = fields.Selection([('weekly', 'Weekly snapshot'), ('backtest', 'Backtest')])
-    level = fields.Selection([('company', 'Company'), ('branch', 'Branch'), ('category', 'Category'), ('product', 'Product')])
+    level = fields.Selection([('company', 'Company'), ('branch', 'Branch'), ('category', 'Category'), ('product', 'Product'),
+                              ('pair', 'Product in branch')])
     warehouse_id = fields.Many2one('stock.warehouse', string='Branch', ondelete='cascade')
     categ_id = fields.Many2one('product.category', string='Category', ondelete='cascade')
     product_id = fields.Many2one('product.product', string='Product', ondelete='cascade')
@@ -65,7 +66,9 @@ class AlkhuloodhSfAccuracy(models.Model):
                 ('company', '', '', ''),
                 ('branch', 'warehouse_id,', ', warehouse_id', 'AND a.warehouse_id = l.warehouse_id'),
                 ('category', 'categ_id,', ', categ_id', 'AND a.categ_id = l.categ_id'),
-                ('product', 'product_id,', ', product_id', 'AND a.product_id = l.product_id')):
+                ('product', 'product_id,', ', product_id', 'AND a.product_id = l.product_id'),
+                ('pair', 'warehouse_id, product_id,', ', warehouse_id, product_id',
+                 'AND a.warehouse_id = l.warehouse_id AND a.product_id = l.product_id')):
             # gcols / gby / jcond are fixed literals from this file, never user input
             sql = REFRESH_SQL.replace('@GCOLS@', gcols).replace('@GBY@', gby).replace('@JCOND@', jcond)
             cr.execute(sql, {'level': level, 'keep': KEEP_DAYS})

@@ -113,6 +113,41 @@ export class SfDashboard extends Component {
         }
         return c;
     }
+    // ---------------------------------------------------------------- branch breakdown (when a product is picked)
+    get branches() {
+        const b = this.state.data && this.state.data.branches;
+        return b || null;
+    }
+    branchValue(r) {
+        return (this.isQty ? r.qty : r.rev) || 0;
+    }
+    branchShare(r) {
+        const v = this.isQty ? r.share_qty : r.share_rev;
+        return v === undefined ? null : v;
+    }
+    branchChg(r) {
+        const v = this.isQty ? r.chg_qty : r.chg_rev;
+        return v === undefined ? null : v;
+    }
+    branchFc(r) {
+        const v = this.isQty ? r.fc_qty : r.fc_rev;
+        return v === undefined ? null : v;
+    }
+    barStyle(r) {
+        const rows = this.branches ? this.branches.rows : [];
+        const max = Math.max(1e-9, ...rows.map((x) => this.branchValue(x)));
+        return `width:${Math.max(0, (this.branchValue(r) / max) * 100).toFixed(1)}%;`;
+    }
+    chgClass(v) {
+        return v === null || v === undefined ? "" : v >= 5 ? "o_sf_ok" : v <= -5 ? "o_sf_bad" : "";
+    }
+    methodLabel(m) {
+        return m === "model" ? "Own history" : m === "alloc" ? "Estimated from share" : "Not enough sales";
+    }
+    async pickBranch(id) {
+        await this.setFilter("warehouse_id", id === "" ? "" : String(id));
+    }
+
     get unit() {
         return this.isQty ? "units" : "BHD";
     }

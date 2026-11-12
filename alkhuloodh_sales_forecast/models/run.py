@@ -17,20 +17,35 @@ _logger = logging.getLogger(__name__)
 
 ENGINE_VERSION = 'akf-engine 1.0 (Hijri profile, hierarchical shapes)'
 KEEP_WEEKLY_DAYS = 400
+PAIR_KEEP_DAYS = 28        # weekly snapshots keep product-in-branch lines only for the first 28 days (what accuracy compares)
 
+# One text block (built by pandas in C) parsed by Postgres: much less work for the Odoo process than adapting
+# nine long Python lists. Values never contain commas or line breaks.
 LINE_INSERT = """
 INSERT INTO alkhuloodh_sf_forecast_line
-       (run_id, date, level, warehouse_id, categ_id, product_id, metric, expected, low, high,
+       (run_id, date, level, warehouse_id, categ_id, product_id, metric, expected, low, high, method,
         create_uid, create_date, write_uid, write_date)
-SELECT %(run)s, t.d, t.l, t.w, t.c, t.p, t.m, t.e, t.lo, t.hi,
+SELECT %(run)s, f[1]::date, f[2], NULLIF(f[3], '')::int, NULLIF(f[4], '')::int, NULLIF(f[5], '')::int, f[6],
+       f[7]::float8, f[8]::float8, f[9]::float8, NULLIF(f[10], ''),
        %(uid)s, (now() AT TIME ZONE 'UTC'), %(uid)s, (now() AT TIME ZONE 'UTC')
-  FROM unnest(%(d)s::date[], %(l)s::text[], %(w)s::int[], %(c)s::int[], %(p)s::int[], %(m)s::text[],
-              %(e)s::float8[], %(lo)s::float8[], %(hi)s::float8[]) AS t(d, l, w, c, p, m, e, lo, hi)
+  FROM (SELECT string_to_array(x, ',') AS f
+          FROM unnest(string_to_array(%(blob)s, E'\\n')) AS x WHERE x <> '') s
 """
 
 
-def _ints(series):
-    return [None if pd.isna(x) else int(x) for x in series]
+def _int_col(series):
+    return series.astype('Int64').astype(str).replace('<NA>', '')
+
+
+def _lines_blob(lines):
+    df = pd.DataFrame({
+        'd': lines['date'].dt.strftime('%Y-%m-%d'), 'l': lines['level'],
+        'w': _int_col(lines['warehouse_id']), 'c': _int_col(lines['categ_id']), 'p': _int_col(lines['product_id']),
+        'm': lines['metric'],
+        'e': lines['expected'].fillna(0.0).round(3), 'lo': lines['low'].fillna(0.0).round(3),
+        'hi': lines['high'].fillna(0.0).round(3), 'me': lines['method'].fillna('')})
+    return df.to_csv(index=False, header=False)
+
 
 
 class AlkhuloodhSfRun(models.Model):
@@ -87,11 +102,11 @@ class AlkhuloodhSfRun(models.Model):
     @api.model
     def _product_sig(self, cfg):
         """Changes whenever the extra-product list or the product selection rule changes."""
-        key = 'top12m|' + ','.join(str(i) for i in sorted(cfg.extra_product_ids.ids))
+        key = 'top12m+pair1|' + ','.join(str(i) for i in sorted(cfg.extra_product_ids.ids))
         return hashlib.md5(key.encode()).hexdigest()[:12]
 
     @api.model
-    def _build_backtests(self, budget_seconds=60):
+    def _build_backtests(self, budget_seconds=25):
         """Past forecasts for the last 12 month-ends, made with data up to each date only. They let the dashboard
         and the accuracy screen compare predicted vs actual from day one. Works until the time budget is used,
         then stops: press the button again to continue."""
@@ -166,13 +181,7 @@ class AlkhuloodhSfRun(models.Model):
             lines.loc[mask, ['expected', 'low', 'high']] = 0.0
 
         cr.execute('DELETE FROM alkhuloodh_sf_forecast_line WHERE run_id = %s', (self.id,))
-        cr.execute(LINE_INSERT, {
-            'run': self.id, 'uid': self.env.uid or 1,
-            'd': [d.date() for d in lines['date']], 'l': lines['level'].tolist(),
-            'w': _ints(lines['warehouse_id']), 'c': _ints(lines['categ_id']), 'p': _ints(lines['product_id']),
-            'm': lines['metric'].tolist(), 'e': lines['expected'].tolist(),
-            'lo': lines['low'].tolist(), 'hi': lines['high'].tolist(),
-        })
+        cr.execute(LINE_INSERT, {'run': self.id, 'uid': self.env.uid or 1, 'blob': _lines_blob(lines)})
         self.write({'origin': origin.date(), 'horizon_end': horizon_end.date(), 'line_count': len(lines),
                     'engine_version': ENGINE_VERSION,
                     'has_products': not light,
@@ -189,4 +198,8 @@ class AlkhuloodhSfRun(models.Model):
         cr.execute("""DELETE FROM alkhuloodh_sf_forecast_line l USING alkhuloodh_sf_run r
                        WHERE l.run_id = r.id AND r.kind = 'weekly' AND r.id <> %s
                          AND r.run_date < (now() AT TIME ZONE 'UTC') - make_interval(days => %s)""", (self.id, KEEP_WEEKLY_DAYS))
+        # product-in-branch lines are many: weekly snapshots keep only the first days that the accuracy screen compares
+        cr.execute("""DELETE FROM alkhuloodh_sf_forecast_line l USING alkhuloodh_sf_run r
+                       WHERE l.run_id = r.id AND r.kind = 'weekly' AND l.level = 'pair' AND l.date > r.origin + %s""",
+                   (PAIR_KEEP_DAYS,))
         self.env.invalidate_all()

@@ -4,7 +4,7 @@ Hijri-aware sales forecast (revenue and quantity) per branch, product category a
 Reads POS tables only. Writes only to its own tables. Needs python pandas and numpy.
 
 ## Menus (Sales Forecast)
-- **Dashboard**: filters, low / expected / high chart, predicted vs actual vs error per day, comparisons with last week,
+- **Dashboard**: filters, a product's sales in every branch (when a product is picked), low / expected / high chart, predicted vs actual vs error per day, comparisons with last week,
   last month, last year and the same Hijri date last year, weekly / monthly / Hijri-month roll-ups, CSV download.
 - **Dates & holidays**: confirmed Eid / Ramadan / Ashura / Hijri New Year dates, holidays and full closures.
 - **Accuracy**: frozen forecasts compared with what really sold (list and graph), plus a drift warning.
@@ -17,6 +17,18 @@ Reads POS tables only. Writes only to its own tables. Needs python pandas and nu
 3. Configuration > Build past forecasts (backtest). Press again until nothing remains. Then Refresh accuracy.
 4. Dates & holidays > Suggest upcoming dates. Confirm each date when it is known. Refresh forecast now.
 5. Open the Dashboard.
+
+## Product in a branch (19.0.1.3.0)
+Pick a product and a branch together to see that product's forecast in that branch, for revenue and quantity.
+Pick a product alone to see all branches combined, with a table and bars of how it sold in each branch.
+- A product that a branch sold on at least 100 of the last 365 days is forecast from that branch's own history ("Own history").
+- With 28 to 99 selling days, the product's all-branch forecast is split by the branch's recent share of its sales ("Estimated from share").
+- With fewer than 28 selling days, or no sale in the last 8 weeks, there is no forecast ("Not enough sales").
+- Branch forecasts are made separately, so they may not add up exactly to the all-branch product forecast.
+- Ranges for these series are provisional (product ranges stretched by a fixed factor, plus the natural spread of small counts).
+  Judge them by Accuracy > Product in branch, "Inside range %".
+- Weekly snapshots keep product-in-branch lines only for their first 28 days (what the Accuracy screen compares).
+- After upgrading from an older version: Run forecast now, then Build past forecasts (several presses), then Refresh accuracy.
 
 ## Automatic jobs
 - 00:00 UTC load yesterday's sales (re-reads the last 7 days) and refresh accuracy.
