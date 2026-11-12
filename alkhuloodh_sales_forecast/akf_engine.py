@@ -207,6 +207,19 @@ class Engine:
                         key=lambda p: self.prod_rev[p][year_ago:origin].sum(), reverse=True)[:n]
         return [p for p in ranked if self.pcat.get(p, -1) in mc]
 
+    def chosen_products(self, origin, extra=()):
+        """The products forecast at `origin`: the 70 best sellers of the last 12 months that are still selling, plus the
+        extra products that are still selling. Cheap: needs no shapes, so it can be used to see what a run should hold."""
+        origin = pd.Timestamp(origin)
+        cats = {c for c in self.ct if c != -1 and self.ct[c][:origin].sum() > 0}
+        year_ago = origin - pd.Timedelta(days=365)
+        ranked = sorted((p for p in self.prod_rev if self.is_active(p, origin)),
+                        key=lambda p: self.prod_rev[p][year_ago:origin].sum(), reverse=True)[:TOP_PRODUCTS]
+        chosen = [p for p in ranked if self.pcat.get(p, -1) in cats]
+        chosen += [p for p in extra if p not in chosen and p in self.prod_rev and self.pcat.get(p, -1) in cats
+                   and self.is_active(p, origin)]
+        return chosen
+
     def is_active(self, p, origin):
         """Sold something in the last 56 days. A product with no recent sales gets no forecast (not a row of zeros)."""
         return self.prod_rev[p][origin - pd.Timedelta(days=LEVEL_DAYS - 1):origin].sum() > 0
@@ -293,15 +306,29 @@ class Engine:
             F['cell'].update(self.cells_for_branch(b, sh, mb, mc, dates))
         self.rollup(F)
         if products:
-            chosen = self.top_products(sh, mc)
-            chosen += [p for p in extra if p not in chosen and p in self.prod_rev and self.pcat.get(p, -1) in mc]
-            for p in chosen:
-                pf = self.product_forecast(p, sh, mc, dates)
-                for nm, f in pf.items():
-                    F[nm][p] = f
-                if pf:
-                    for nm, d in self.pair_forecasts(p, sh, dates, pf).items():
-                        F[nm].update(d)
+            self._products_into(F, self.chosen_products(origin, extra), sh, mc, dates)
+        return F, sh
+
+    def _products_into(self, F, chosen, sh, mc, dates):
+        for p in chosen:
+            if self.pcat.get(p, -1) not in mc:
+                continue
+            pf = self.product_forecast(p, sh, mc, dates)
+            for nm, f in pf.items():
+                F[nm][p] = f
+            if pf:
+                for nm, d in self.pair_forecasts(p, sh, dates, pf).items():
+                    F[nm].update(d)
+
+    def run_products(self, origin, dates, products):
+        """Only the given products (product level and product-in-branch), as run() would make them. Used to add products
+        to a forecast that already exists without redoing the rest."""
+        sh = self.shared(origin)
+        _mb, mc = self.shapes(sh)
+        F = {'prod_rev': {}, 'prod_qty': {}, 'pair_rev': {}, 'pair_qty': {}}
+        self.pair_method = {}
+        self.pair_price = {}
+        self._products_into(F, list(products), sh, mc, dates)
         return F, sh
 
     @staticmethod

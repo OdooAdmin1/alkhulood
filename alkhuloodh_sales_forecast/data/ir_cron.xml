@@ -25,4 +25,17 @@
         <field name="nextcall" eval="(DateTime.now() + timedelta(days=1)).strftime('%Y-%m-%d 00:30:00')"/>
         <field name="active" eval="True"/>
     </record>
+    <!-- Not on a timer: queued by the "Build past forecasts" button, by changes to the extra products list and by the
+         nightly forecast when a month-end is missing. It re-queues itself until all past forecasts are built. -->
+    <record id="cron_build_backtests" model="ir.cron">
+        <field name="name">Sales Forecast: build past forecasts (queued, no timer)</field>
+        <field name="model_id" ref="model_alkhuloodh_sf_run"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_build_backtests()</field>
+        <field name="user_id" ref="base.user_root"/>
+        <field name="interval_number">1</field>
+        <field name="interval_type">months</field>
+        <field name="nextcall" eval="(DateTime.now() + timedelta(days=3650)).strftime('%Y-%m-%d 00:00:00')"/>
+        <field name="active" eval="True"/>
+    </record>
 </odoo>

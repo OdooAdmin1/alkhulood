@@ -14,7 +14,8 @@ Reads POS tables only. Writes only to its own tables. Needs python pandas and nu
 ## First-time setup (staging)
 1. Configuration > Load full history. Then Reconciliation summary (compare with the extract figures).
 2. Configuration > Run forecast now.
-3. Configuration > Build past forecasts (backtest). Press again until nothing remains. Then Refresh accuracy.
+3. Configuration > Build past forecasts (backtest). One click: it builds in the background and the progress shows at the top of the
+   page. Then Refresh accuracy.
 4. Dates & holidays > Suggest upcoming dates. Confirm each date when it is known. Refresh forecast now.
 5. Open the Dashboard.
 
@@ -28,7 +29,17 @@ Pick a product alone to see all branches combined, with a table and bars of how 
 - Ranges for these series are provisional (product ranges stretched by a fixed factor, plus the natural spread of small counts).
   Judge them by Accuracy > Product in branch, "Inside range %".
 - Weekly snapshots keep product-in-branch lines only for their first 28 days (what the Accuracy screen compares).
-- After upgrading from an older version: Run forecast now, then Build past forecasts (several presses), then Refresh accuracy.
+- After upgrading from an older version: Run forecast now, then Build past forecasts (one click), then Refresh accuracy.
+
+## Past forecasts (19.0.1.4.0)
+- **One click, background:** the button queues a scheduled action that builds the 12 month-end forecasts, newest first, about
+  40 seconds per run, and queues itself again until all are built. Progress ("Past forecasts: 8 of 12 built") shows on the
+  Configuration page. "Build now (wait here)" is the fallback that works in the page for about 25 seconds per press.
+- **Only what is missing:** each past forecast records which products it holds. Adding a product to "Extra products to forecast"
+  queues a background job that adds only that product to the 12 months (seconds, not a full rebuild).
+- **Automatic:** the nightly forecast queues the build if a month-end is missing or the products list changed.
+- A full rebuild happens only when the forecasting method changes (a new release says so).
+- Staging may start the background job a few minutes late because it sleeps when idle; production does not.
 
 ## Automatic jobs
 - 00:00 UTC load yesterday's sales (re-reads the last 7 days) and refresh accuracy.

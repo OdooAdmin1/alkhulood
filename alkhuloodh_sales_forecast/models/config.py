@@ -38,11 +38,36 @@ class AlkhuloodhSfConfig(models.Model):
     last_load_seconds = fields.Float(digits=(10, 1), readonly=True)
     reconciliation_text = fields.Text(readonly=True)
     drift_message = fields.Text(string='Accuracy check', compute='_compute_drift_message')
+    bt_note = fields.Char(string='Past forecasts status', readonly=True)
+    bt_extra_sig = fields.Char(readonly=True, help='Extra products list at the last complete build of the past forecasts.')
+    bt_progress = fields.Text(string='Past forecasts', compute='_compute_bt_progress')
 
     def _compute_drift_message(self):
         status = self.env['alkhuloodh.sf.accuracy']._drift_status()
         for r in self:
             r.drift_message = status['message']
+
+    def _compute_bt_progress(self):
+        run = self.env['alkhuloodh.sf.run']
+        built, total = run._backtest_counts()
+        for r in self:
+            lines = []
+            if total:
+                lines.append(self.env._('Past forecasts: %(built)s of %(total)s built.', built=built, total=total))
+            else:
+                lines.append(self.env._('Past forecasts: not enough history yet.'))
+            if r.bt_note:
+                lines.append(r.bt_note)
+            if r.bt_extra_sig and r.bt_extra_sig != run._extra_sig(r):
+                lines.append(self.env._('The extra products list changed: the past forecasts are being updated for the new products.'))
+            r.bt_progress = '\n'.join(lines)
+
+    def write(self, vals):
+        res = super().write(vals)
+        if 'extra_product_ids' in vals:
+            # new products need past forecasts too: only the missing products are added, in the background
+            self.env['alkhuloodh.sf.run']._queue_backtests(self.env._('Extra products changed. Queued: the new products are added to the past forecasts.'))
+        return res
 
     @api.model
     def get_config(self):
@@ -77,13 +102,25 @@ class AlkhuloodhSfConfig(models.Model):
         return {'type': 'ir.actions.act_window', 'res_model': 'alkhuloodh.sf.run', 'view_mode': 'list,form', 'name': self.env._('Forecast runs')}
 
     def action_build_backtests(self):
+        """Queues the build in the background and returns at once; progress shows on this screen."""
+        self._check_manager()
+        queued = self.env['alkhuloodh.sf.run']._queue_backtests()
+        msg = (self.env._('Past forecasts are being built in the background. Progress is shown at the top of this page. '
+                          'On staging the server may start a few minutes late.') if queued else
+               self.env._('The background job is missing. Update the module, or use "Build now".'))
+        return {'type': 'ir.actions.client', 'tag': 'display_notification',
+                'params': {'title': self.env._('Past forecasts'), 'message': msg, 'type': 'success' if queued else 'warning',
+                           'sticky': False, 'next': {'type': 'ir.actions.client', 'tag': 'reload'}}}
+
+    def action_build_backtests_now(self):
+        """Fallback: builds for about 25 seconds in this request. Press again to continue."""
         self._check_manager()
         res = self.env['alkhuloodh.sf.run']._build_backtests()
         msg = self.env._('Past forecasts built: %(made)s now, %(remaining)s still to do (of %(total)s). ', **res)
         if res['remaining']:
             msg += self.env._('Press the button again to continue.')
         return {'type': 'ir.actions.client', 'tag': 'display_notification',
-                'params': {'title': self.env._('Backtest'), 'message': msg, 'type': 'success', 'sticky': False,
+                'params': {'title': self.env._('Past forecasts'), 'message': msg, 'type': 'success', 'sticky': False,
                            'next': {'type': 'ir.actions.client', 'tag': 'reload'}}}
 
     def action_refresh_accuracy(self):
