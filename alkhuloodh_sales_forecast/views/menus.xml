@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_sf_root" name="Sales Forecast" sequence="60" groups="base.group_system,group_sf_user"
+              web_icon="alkhuloodh_sales_forecast,static/description/icon.png"/>
+    <menuitem id="menu_sf_dashboard" name="Dashboard" parent="menu_sf_root" action="action_sf_dashboard" sequence="1"/>
+    <menuitem id="menu_sf_report" name="Forecast report" parent="menu_sf_root" action="action_sf_report" sequence="2"/>
+    <menuitem id="menu_sf_actual" name="Daily actuals" parent="menu_sf_root" action="action_sf_actual" sequence="10"/>
+    <menuitem id="menu_sf_override" name="Dates &amp; holidays" parent="menu_sf_root" action="action_sf_override" sequence="15"/>
+    <menuitem id="menu_sf_accuracy" name="Accuracy" parent="menu_sf_root" action="action_sf_accuracy" sequence="25"/>
+    <menuitem id="menu_sf_run" name="Forecast runs" parent="menu_sf_root" action="action_sf_run" sequence="30"/>
+    <menuitem id="menu_sf_line" name="Forecast lines" parent="menu_sf_root" action="action_sf_line" sequence="40"/>
+    <menuitem id="menu_sf_calendar" name="Hijri calendar" parent="menu_sf_root" action="action_sf_calendar" sequence="20"/>
+    <menuitem id="menu_sf_report_setup" name="Report setup" parent="menu_sf_root" sequence="80"
+              groups="base.group_system,group_sf_manager"/>
+    <menuitem id="menu_sf_report_branch" name="Report branches" parent="menu_sf_report_setup" action="action_sf_report_branch" sequence="1"/>
+    <menuitem id="menu_sf_report_line" name="Report products" parent="menu_sf_report_setup" action="action_sf_report_line" sequence="2"/>
+    <menuitem id="menu_sf_config" name="Configuration" parent="menu_sf_root" action="action_sf_config" sequence="90"
+              groups="base.group_system,group_sf_manager"/>
+</odoo>

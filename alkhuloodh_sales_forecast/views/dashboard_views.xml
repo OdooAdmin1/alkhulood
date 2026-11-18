@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_sf_dashboard" model="ir.actions.client">
+        <field name="name">Forecast dashboard</field>
+        <field name="tag">alkhuloodh_sf_dashboard</field>
+    </record>
+</odoo>

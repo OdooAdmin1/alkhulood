@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- The client's product list in the order of the demo report. Rows are matched to Odoo products with the "Match names to products" button. -->
+    <record id="report_line_01" model="alkhuloodh.sf.report.line">
+        <field name="sequence">10</field>
+        <field name="label">HALWA RED SP</field>
+    </record>
+    <record id="report_line_02" model="alkhuloodh.sf.report.line">
+        <field name="sequence">20</field>
+        <field name="label">HALWA RED</field>
+    </record>
+    <record id="report_line_03" model="alkhuloodh.sf.report.line">
+        <field name="sequence">30</field>
+        <field name="label">HALWA GREEN SP</field>
+    </record>
+    <record id="report_line_04" model="alkhuloodh.sf.report.line">
+        <field name="sequence">40</field>
+        <field name="label">HALWA ADHARI</field>
+    </record>
+    <record id="report_line_05" model="alkhuloodh.sf.report.line">
+        <field name="sequence">50</field>
+        <field name="label">HALWA DANA</field>
+    </record>
+    <record id="report_line_06" model="alkhuloodh.sf.report.line">
+        <field name="sequence">60</field>
+        <field name="label">HALWA BUSTAN</field>
+    </record>
+    <record id="report_line_07" model="alkhuloodh.sf.report.line">
+        <field name="sequence">70</field>
+        <field name="label">CUP HALWA</field>
+    </record>
+    <record id="report_line_08" model="alkhuloodh.sf.report.line">
+        <field name="sequence">80</field>
+        <field name="label">CUP HALWA PREMIUM</field>
+    </record>
+    <record id="report_line_09" model="alkhuloodh.sf.report.line">
+        <field name="sequence">90</field>
+        <field name="label">CUP HALWA BUSTAN</field>
+    </record>
+    <record id="report_line_10" model="alkhuloodh.sf.report.line">
+        <field name="sequence">100</field>
+        <field name="label">CUP RAHASH</field>
+    </record>
+    <record id="report_line_11" model="alkhuloodh.sf.report.line">
+        <field name="sequence">110</field>
+        <field name="label">CUT RAHASH</field>
+    </record>
+    <record id="report_line_12" model="alkhuloodh.sf.report.line">
+        <field name="sequence">120</field>
+        <field name="label">BANOOSH</field>
+    </record>
+    <record id="report_line_13" model="alkhuloodh.sf.report.line">
+        <field name="sequence">130</field>
+        <field name="label">KAMFAROOSH</field>
+    </record>
+    <record id="report_line_14" model="alkhuloodh.sf.report.line">
+        <field name="sequence">140</field>
+        <field name="label">AQILI SMALL</field>
+    </record>
+    <record id="report_line_15" model="alkhuloodh.sf.report.line">
+        <field name="sequence">150</field>
+        <field name="label">AQILI SMALL WITH HALWA</field>
+    </record>
+    <record id="report_line_16" model="alkhuloodh.sf.report.line">
+        <field name="sequence">160</field>
+        <field name="label">AQILI BIG CAKE</field>
+    </record>
+    <record id="report_line_17" model="alkhuloodh.sf.report.line">
+        <field name="sequence">170</field>
+        <field name="label">COFFEE BISCUIT RAHASH</field>
+    </record>
+    <record id="report_line_18" model="alkhuloodh.sf.report.line">
+        <field name="sequence">180</field>
+        <field name="label">COFFEE BISCUIT SAUCE</field>
+    </record>
+    <record id="report_line_19" model="alkhuloodh.sf.report.line">
+        <field name="sequence">190</field>
+        <field name="label">DARWAZA BISCUIT</field>
+    </record>
+    <record id="report_line_20" model="alkhuloodh.sf.report.line">
+        <field name="sequence">200</field>
+        <field name="label">ROSHANE BISCUIT</field>
+    </record>
+    <record id="report_line_21" model="alkhuloodh.sf.report.line">
+        <field name="sequence">210</field>
+        <field name="label">DEHRIZ BISCUIT</field>
+    </record>
+    <record id="report_line_22" model="alkhuloodh.sf.report.line">
+        <field name="sequence">220</field>
+        <field name="label">PREMIUM BISCUIT</field>
+    </record>
+    <record id="report_line_23" model="alkhuloodh.sf.report.line">
+        <field name="sequence">230</field>
+        <field name="label">PREMIUM RAHASH BISCUIT</field>
+    </record>
+    <record id="report_line_24" model="alkhuloodh.sf.report.line">
+        <field name="sequence">240</field>
+        <field name="label">SAMOOSA FRY</field>
+    </record>
+    <record id="report_line_25" model="alkhuloodh.sf.report.line">
+        <field name="sequence">250</field>
+        <field name="label">SAMOOSA HONEY</field>
+    </record>
+    <record id="report_line_26" model="alkhuloodh.sf.report.line">
+        <field name="sequence">260</field>
+        <field name="label">SAMOOSA HALWA</field>
+    </record>
+    <record id="report_line_27" model="alkhuloodh.sf.report.line">
+        <field name="sequence">270</field>
+        <field name="label">MATHAI 400</field>
+    </record>
+    <record id="report_line_28" model="alkhuloodh.sf.report.line">
+        <field name="sequence">280</field>
+        <field name="label">MATHAI 800</field>
+    </record>
+    <record id="report_line_29" model="alkhuloodh.sf.report.line">
+        <field name="sequence">290</field>
+        <field name="label">MATHAI KUBOOS</field>
+    </record>
+    <record id="report_line_30" model="alkhuloodh.sf.report.line">
+        <field name="sequence">300</field>
+        <field name="label">MATHAI NAEEM</field>
+    </record>
+    <record id="report_line_31" model="alkhuloodh.sf.report.line">
+        <field name="sequence">310</field>
+        <field name="label">MATHAI METEEIN</field>
+    </record>
+    <record id="report_line_32" model="alkhuloodh.sf.report.line">
+        <field name="sequence">320</field>
+        <field name="label">MATHAI SPICY 400</field>
+    </record>
+    <record id="report_line_33" model="alkhuloodh.sf.report.line">
+        <field name="sequence">330</field>
+        <field name="label">MATHAI SPICY 800</field>
+    </record>
+    <record id="report_line_34" model="alkhuloodh.sf.report.line">
+        <field name="sequence">340</field>
+        <field name="label">SPICY KUBOOS</field>
+    </record>
+    <record id="report_line_35" model="alkhuloodh.sf.report.line">
+        <field name="sequence">350</field>
+        <field name="label">JILEBI</field>
+    </record>
+</odoo>
