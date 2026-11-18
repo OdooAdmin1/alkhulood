@@ -6,6 +6,8 @@ Reads POS tables only. Writes only to its own tables. Needs python pandas and nu
 ## Menus (Sales Forecast)
 - **Dashboard**: filters, a product's sales in every branch (when a product is picked), low / expected / high chart, predicted vs actual vs error per day, comparisons with last week,
   last month, last year and the same Hijri date last year, weekly / monthly / Hijri-month roll-ups, CSV download.
+- **Forecast report**: all products by branch in one table (one row per product, one column per branch, totals), like the
+  client's paper report. Excel, PDF and print. See below.
 - **Dates & holidays**: confirmed Eid / Ramadan / Ashura / Hijri New Year dates, holidays and full closures.
 - **Accuracy**: frozen forecasts compared with what really sold (list and graph), plus a drift warning.
 - **Daily actuals**, **Hijri calendar**, **Forecast runs**, **Forecast lines**: the stored data.
@@ -30,6 +32,27 @@ Pick a product alone to see all branches combined, with a table and bars of how 
   Judge them by Accuracy > Product in branch, "Inside range %".
 - Weekly snapshots keep product-in-branch lines only for their first 28 days (what the Accuracy screen compares).
 - After upgrading from an older version: Run forecast now, then Build past forecasts (one click), then Refresh accuracy.
+
+## Forecast report (19.0.1.5.0)
+Sales Forecast > Forecast report: pick a day or a period, quantity or revenue, a category and the branches. One row per product,
+one column per branch, a total column and an "All products" row. Download Excel (second sheet: low and high), download PDF
+(A4 landscape) or print.
+- The figures are the product-in-branch forecasts. Each figure is rounded and the totals add up the figures shown.
+- Slanted figures are estimates (the branch sells the product on too few days for its own model: the product forecast split by
+  the branch's recent share). "-" means not enough sales to forecast that product in that branch.
+- For a period, the figure is the total for the period and its range is measured on past forecasts (like the dashboard).
+- Quick select buttons: Today, Tomorrow, Next 7 days, This week, Next week, This month (weeks run Sunday to Saturday).
+  Each is cut to the days the forecast covers. A button is greyed out when none of its days are in the forecast.
+- Only forecast days can be chosen (after the last day of actuals, up to the end of the forecast).
+- **Report setup > Report branches**: short column name (MRQ, HT ...), order and show/hide for each branch. The headings start
+  exactly as in the client's demo (MRQ, HT, MDN, BDY, MANAMA, RIFFA, JIDALI, BARAHA, GALALI, in that order) when a branch is first
+  listed; they can be edited in the list. MDN is given to Tubli by elimination: check it. Under every table (screen, Excel, PDF) a key
+  lists what each heading stands for (MRQ = Muharraq Branch ...). A branch that should never be listed (e.g. MAIN STORE) can be
+  archived: select it, Actions > Archive. It is not added again; the "Archived" filter shows it.
+- **Report setup > Report products**: the products and their order, as on the client's paper report (the demo list is
+  pre-filled). "Match names to products" links each name to an Odoo product; rows marked Check or No match can be set by hand.
+  With no rows at all, every forecast product is listed.
+- PDF text uses a standard font: Arabic product names would not print. Use the English names.
 
 ## Past forecasts (19.0.1.4.0)
 - **One click, background:** the button queues a scheduled action that builds the 12 month-end forecasts, newest first, about

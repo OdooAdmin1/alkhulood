@@ -1,6 +1,6 @@
 {
     'name': 'Alkhuloodh Sales Forecast',
-    'version': '19.0.1.4.0',
+    'version': '19.0.1.5.5',
     'summary': 'Hijri-aware sales forecast (quantity and revenue) by branch, category and product',
     'description': """
 Step 1: settings, Hijri calendar, aggregated daily POS sales and a reconciliation summary.
@@ -19,6 +19,7 @@ Reads POS tables only; writes only to its own tables.
         'security/security.xml',
         'security/ir.model.access.csv',
         'data/ir_cron.xml',
+        'data/report_lines.xml',
         'views/run_views.xml',
         'views/actual_views.xml',
         'views/calendar_views.xml',
@@ -26,6 +27,7 @@ Reads POS tables only; writes only to its own tables.
         'views/override_views.xml',
         'views/accuracy_views.xml',
         'views/dashboard_views.xml',
+        'views/report_views.xml',
         'views/menus.xml',
     ],
     'assets': {
@@ -33,6 +35,9 @@ Reads POS tables only; writes only to its own tables.
             'alkhuloodh_sales_forecast/static/src/dashboard/dashboard.js',
             'alkhuloodh_sales_forecast/static/src/dashboard/dashboard.xml',
             'alkhuloodh_sales_forecast/static/src/dashboard/dashboard.scss',
+            'alkhuloodh_sales_forecast/static/src/report/report.js',
+            'alkhuloodh_sales_forecast/static/src/report/report.xml',
+            'alkhuloodh_sales_forecast/static/src/report/report.scss',
         ],
     },
     'post_init_hook': 'post_init_hook',

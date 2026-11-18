@@ -7,3 +7,5 @@ from . import range_param
 from . import run
 from . import forecast_line
 from . import dashboard
+from . import report_setup
+from . import report
