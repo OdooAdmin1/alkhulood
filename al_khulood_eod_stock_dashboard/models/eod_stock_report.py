@@ -1,7 +1,7 @@
 from datetime import timedelta
 
 from odoo import api, fields, models
-from odoo.osv import expression
+from odoo.fields import Domain
 
 # The client wants exactly these 9 retail branches on the dashboard - never
 # MAIN STORE, SHOP RETURN, or any other warehouse that might exist/get added.
@@ -41,11 +41,11 @@ class AlKhuloodEodStockReport(models.AbstractModel):
 
     @api.model
     def _get_tracked_products(self, product_ids=None, category_ids=None):
-        domain = [("eod_dashboard_tracked", "=", True)]
+        domain = Domain("eod_dashboard_tracked", "=", True)
         if product_ids:
-            domain = expression.AND([domain, [("id", "in", product_ids)]])
+            domain &= Domain("id", "in", product_ids)
         if category_ids:
-            domain = expression.AND([domain, [("categ_id", "in", category_ids)]])
+            domain &= Domain("categ_id", "in", category_ids)
         return self.env["product.product"].search(domain, order="name")
 
     @api.model
@@ -53,11 +53,11 @@ class AlKhuloodEodStockReport(models.AbstractModel):
         if warehouse_ids:
             # Explicit ids requested (e.g. store chips already scoped to the
             # allowed 9) - trust them, still gated by the flag.
-            domain = [("id", "in", warehouse_ids), ("eod_dashboard_branch", "=", True)]
+            domain = Domain("id", "in", warehouse_ids) & Domain("eod_dashboard_branch", "=", True)
             return self.env["stock.warehouse"].search(domain, order="name")
 
-        name_domain = expression.OR([[("name", "ilike", kw)] for kw in BRANCH_NAME_KEYWORDS])
-        domain = expression.AND([[("eod_dashboard_branch", "=", True)], name_domain])
+        name_domain = Domain.OR(Domain("name", "ilike", kw) for kw in BRANCH_NAME_KEYWORDS)
+        domain = Domain("eod_dashboard_branch", "=", True) & name_domain
         return self.env["stock.warehouse"].search(domain, order="name")
 
     @api.model
