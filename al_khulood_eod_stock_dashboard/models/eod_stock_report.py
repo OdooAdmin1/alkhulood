@@ -20,7 +20,7 @@ BRANCH_NAME_KEYWORDS = [
 ]
 
 
-class AlKhuloodEodStockReport(models.Model):
+class AlKhuloodEodStockReport(models.AbstractModel):
     """Reporting model with no database table and no stored history.
 
     Every number this dashboard shows - whether "right now" or "as of
@@ -38,7 +38,6 @@ class AlKhuloodEodStockReport(models.Model):
 
     _name = "al.khulood.eod.stock.report"
     _description = "Al Khulood EOD Stock Report (computed on demand)"
-    _auto = False  # no DB table is created for this model
 
     @api.model
     def _get_tracked_products(self, product_ids=None, category_ids=None):
