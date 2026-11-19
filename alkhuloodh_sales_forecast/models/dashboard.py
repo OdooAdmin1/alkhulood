@@ -48,9 +48,8 @@ class AlkhuloodhSfDashboard(models.AbstractModel):
     # ------------------------------------------------------------------ helpers
     @api.model
     def _check_access(self):
-        user = self.env.user
-        if not (user.has_group('base.group_system') or user.has_group('alkhuloodh_sales_forecast.group_sf_user')):
-            raise AccessError(self.env._('You do not have access to the sales forecast.'))
+        """Raises unless the user may open the forecast. Returns the scope: {'limit': None | branch id, 'viewer_only': bool}."""
+        return self.env['alkhuloodh.sf.access']._scope()
 
     @api.model
     def _current_run(self):
@@ -62,11 +61,13 @@ class AlkhuloodhSfDashboard(models.AbstractModel):
     # ------------------------------------------------------------------ options for the filter bar
     @api.model
     def get_options(self):
-        self._check_access()
+        scope = self._check_access()
         cr = self.env.cr
         run = self._current_run()
         cr.execute("""SELECT DISTINCT a.warehouse_id FROM alkhuloodh_sf_actual_daily a""")
         wh = self.env['stock.warehouse'].sudo().browse([r[0] for r in cr.fetchall()]).exists()
+        if scope['limit']:
+            wh = wh.filtered(lambda w: w.id == scope['limit'])
         cr.execute("""SELECT DISTINCT categ_id FROM alkhuloodh_sf_actual_daily WHERE categ_id IS NOT NULL""")
         cats = self.env['product.category'].sudo().browse([r[0] for r in cr.fetchall()]).exists()
         cr.execute("""SELECT DISTINCT product_id FROM alkhuloodh_sf_forecast_line
@@ -77,8 +78,9 @@ class AlkhuloodhSfDashboard(models.AbstractModel):
         changed = cr.fetchone()[0]
         stale = bool(changed and run.run_date and changed > run.run_date)
         return {
-            'stale': stale,
-            'drift': self.env['alkhuloodh.sf.accuracy']._drift_status(),
+            'stale': stale and not scope['viewer_only'],
+            'drift': None if scope['viewer_only'] else self.env['alkhuloodh.sf.accuracy']._drift_status(),
+            'locked_warehouse': scope['limit'] or None,
             'warehouses': sorted(({'id': w.id, 'name': w.name} for w in wh), key=lambda x: x['name']),
             'categories': sorted(({'id': c.id, 'name': c.complete_name} for c in cats), key=lambda x: x['name']),
             'products': sorted(({'id': p.id, 'name': p.display_name} for p in prods), key=lambda x: x['name']),
@@ -89,7 +91,7 @@ class AlkhuloodhSfDashboard(models.AbstractModel):
     # ------------------------------------------------------------------ main data call
     @api.model
     def get_data(self, filters):
-        self._check_access()
+        scope = self._check_access()
         cr = self.env.cr
         run = self._current_run()
         f = {
@@ -101,6 +103,8 @@ class AlkhuloodhSfDashboard(models.AbstractModel):
             'history_days': max(7, min(int(filters.get('history_days') or 28), 120)),
             'gran': filters.get('gran') if filters.get('gran') in ('day', 'week', 'month', 'hijri') else 'day',
         }
+        if scope['limit']:
+            f['warehouse_id'] = scope['limit']      # a limited user always gets their own branch, whatever is sent
         wh, ca, pr, metric = f['warehouse_id'], f['categ_id'], f['product_id'], f['metric']
         if metric == 'qty' and not pr:
             return {'error': self.env._('Quantity forecasts are made per product. Pick a product, or switch to Revenue.')}
@@ -309,7 +313,7 @@ class AlkhuloodhSfDashboard(models.AbstractModel):
         return {
             'rows': rows, 'summary': summary, 'accuracy': accuracy, 'notes': notes, 'info': info, 'metric': sel_metric,
             'origin': str(origin.date()), 'level': level, 'filters': f,
-            'branches': self._branch_breakdown(run, pr, origin, f['history_days'], sel_metric) if pr else None,
+            'branches': self._branch_breakdown(run, pr, origin, f['history_days'], sel_metric) if (pr and not scope['limit']) else None,
         }
 
     @api.model

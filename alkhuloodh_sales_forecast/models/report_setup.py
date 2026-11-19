@@ -1,9 +1,18 @@
 from odoo import api, fields, models
+from odoo.exceptions import AccessError
 
 from .. import akf_report
 
 # Short column names the client uses on the paper report. MDN is not certain: it is the only one of the client's nine
 # columns left over, so it is given to Tubli. Change it under Report setup > Report branches.
+MANAGER_GROUPS = ('base.group_system', 'alkhuloodh_sales_forecast.group_sf_manager')
+
+
+def _check_manager(env):
+    if not any(env.user.has_group(g) for g in MANAGER_GROUPS):
+        raise AccessError(env._('Only Sales Forecast managers can do this.'))
+
+
 DEFAULT_BRANCHES = [
     ('muharraq', 'MRQ', 10), ('hamad', 'HT', 20), ('tubli', 'MDN', 30), ('budaiya', 'BDY', 40), ('manama', 'MANAMA', 50),
     ('riffa', 'RIFFA', 60), ('jid', 'JIDALI', 70), ('baraha', 'BARAHA', 80), ('galali', 'GALALI', 90),
@@ -50,6 +59,7 @@ class AlkhuloodhSfReportBranch(models.Model):
 
     @api.model
     def action_open(self):
+        _check_manager(self.env)
         self._ensure()
         search = self.env.ref('alkhuloodh_sales_forecast.view_sf_report_branch_search', raise_if_not_found=False)
         return {'type': 'ir.actions.act_window', 'name': self.env._('Report branches'), 'res_model': self._name,
@@ -77,6 +87,7 @@ class AlkhuloodhSfReportLine(models.Model):
     def action_match(self):
         # a normal method on purpose: the list-header button sends the (possibly empty) selection as its first argument
         """Matches every row that has no Odoo product yet to one of the forecast products, by name."""
+        _check_manager(self.env)
         run = self.env['alkhuloodh.sf.run'].sudo().search([('is_current', '=', True), ('state', '=', 'done')], limit=1)
         if not run:
             return self._notify(self.env._('There is no forecast yet. Run the forecast first.'), 'warning')

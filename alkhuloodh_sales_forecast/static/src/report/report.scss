@@ -14,6 +14,7 @@
         .o_sf_pill { border: 1px solid rgba(128, 128, 128, .45); background: transparent; color: inherit; border-radius: 16px;
             padding: 3px 14px; cursor: pointer;
             &:disabled { opacity: .4; cursor: default; }
+            &.past { border-style: dashed; }
             &.active { background: #2563eb; border-color: #2563eb; color: #fff; }
             &:hover:not(:disabled):not(.active) { border-color: #2563eb; } } }
 
@@ -36,6 +37,25 @@
     .o_sf_rnotes { background: rgba(217, 119, 6, .12); border-left: 4px solid #d97706; padding: 8px 12px; margin: 8px 0; }
     .o_sf_rtitle { margin: 8px 0 6px; }
 
+    .o_sf_lockedbranch { font-size: 13px; padding: 4px 10px; border: 1px solid rgba(128, 128, 128, .4); border-radius: 4px; }
+
+    .o_sf_days { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; margin: 10px 0 8px;
+        .o_sf_chip { border: 1px solid rgba(128, 128, 128, .45); background: transparent; color: inherit; border-radius: 6px;
+            padding: 4px 10px; cursor: pointer; font-size: 12.5px; white-space: nowrap;
+            &.past { border-style: dashed; opacity: .85; }
+            &.active { background: #2563eb; border-color: #2563eb; color: #fff; opacity: 1; font-weight: 600; }
+            &:hover:not(.active) { border-color: #2563eb; } }
+        .o_sf_step { border: 1px solid rgba(128, 128, 128, .45); background: transparent; color: inherit; border-radius: 6px;
+            width: 30px; height: 28px; font-size: 18px; line-height: 1; cursor: pointer; &:disabled { opacity: .35; cursor: default; } } }
+
+    .o_sf_daytitle { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: baseline; margin: 4px 0 8px;
+        .o_sf_dt { font-size: 17px; font-weight: 600; }
+        .o_sf_hj { font-size: 15px; color: #2f5bd3; font-weight: 500; }
+        .o_sf_tag { font-size: 11px; padding: 2px 10px; border-radius: 10px; border: 1px solid rgba(128, 128, 128, .5);
+            &.past { background: rgba(217, 119, 6, .16); border-color: #d97706; }
+            &.future { background: rgba(37, 99, 235, .14); border-color: #2563eb; } }
+        .o_sf_sub { opacity: .65; font-size: 12px; } }
+
     .o_sf_rwrap { max-height: calc(100vh - 360px); min-height: 260px; overflow: auto; border: 1px solid rgba(128, 128, 128, .3); border-radius: 8px; }
     .o_sf_rtable { border-collapse: separate; border-spacing: 0; width: 100%; min-width: 1000px; table-layout: fixed; font-size: 14px;
         th, td { padding: 8px 10px; border-bottom: 1px solid rgba(128, 128, 128, .18); }
@@ -53,13 +73,24 @@
         .o_sf_rnote { opacity: .85; font-weight: 400; }
         tfoot td { position: sticky; bottom: 0; background-color: var(--sf-bg, #fff); color: var(--sf-fg, inherit);
             border-top: 2px solid rgba(128, 128, 128, .6); font-size: 15px; padding: 10px; }
-        tfoot .o_sf_pcol { z-index: 2; } }
+        tfoot .o_sf_pcol { z-index: 2; }
+        &.o_sf_two { min-width: 1500px; font-size: 13px;
+            th, td { padding: 7px 6px; }
+            .o_sf_pcol { width: 230px; }
+            thead .o_sf_h1 th { height: 36px; padding-top: 0; padding-bottom: 0; text-align: center; }
+            thead .o_sf_h1 .o_sf_pcol { text-align: left; padding-left: 10px; }
+            thead .o_sf_h2 th { top: 36px; height: 26px; padding-top: 0; padding-bottom: 0; background: #34457f; color: #fff;
+                font-size: 11px; font-weight: 500; text-align: center; }
+            .o_sf_tcol { width: auto; font-size: 13.5px; }
+            td.o_sf_fc { color: color-mix(in srgb, var(--sf-fg, currentColor) 62%, transparent); }
+            td.o_sf_act { font-weight: 500; border-left: 1px solid rgba(128, 128, 128, .22); }
+            tfoot td { font-size: 13.5px; } } }
     .o_sf_rfoot { opacity: .65; font-size: 12px; margin: 8px 0 0; max-width: 980px; }
 }
 
 @media print {
     .o_sf_report { overflow: visible; height: auto;
-        .o_sf_rfilters, .o_sf_presets, .o_sf_loading { display: none; }
+        .o_sf_rfilters, .o_sf_presets, .o_sf_days, .o_sf_loading { display: none; }
         .o_sf_rwrap { max-height: none; overflow: visible; border: 0; }
         .o_sf_rtable thead th { background: #1f2d5c !important; color: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         .o_sf_rtable .o_sf_pcol, .o_sf_rtable tfoot td { position: static; } }

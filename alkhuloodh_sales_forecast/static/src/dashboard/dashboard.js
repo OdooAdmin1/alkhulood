@@ -42,6 +42,9 @@ export class SfDashboard extends Component {
         onWillStart(async () => {
             try {
                 this.state.options = await this.orm.call("alkhuloodh.sf.dashboard", "get_options", []);
+                if (this.state.options.locked_warehouse) {
+                    this.state.filters.warehouse_id = this.state.options.locked_warehouse; // a Viewer sees one branch only
+                }
             } catch (e) {
                 this.state.error = (e.data && e.data.message) || e.message || String(e);
                 return;
