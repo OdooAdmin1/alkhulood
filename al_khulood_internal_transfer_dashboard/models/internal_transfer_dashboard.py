@@ -7,6 +7,9 @@ Design notes
 * Warehouses are resolved from the location tree (stock_location.parent_path vs the
   warehouse view location) instead of stock_location.warehouse_id, because on this
   database the stored warehouse_id of the HB and TB sub-locations is swapped.
+* The warehouse view location itself also resolves to its warehouse, so moves whose header
+  destination is e.g. 'Physical Locations/JB' (view) are counted, provided their move lines
+  land internal -> internal.
 * Everything is aggregated in SQL (the move table has ~250k internal rows); no record loops.
 * Value = done quantity x product CURRENT cost. product_product.standard_price is a
   company-dependent jsonb ({"<company_id>": cost}).
@@ -101,6 +104,13 @@ class InternalTransferDashboard(models.AbstractModel):
             "sm.date < %(dt_to)s",
             "sm.company_id = ANY(%(company_ids)s)",
             "ls.warehouse_id <> ld.warehouse_id",
+            # a move that touches a warehouse VIEW location only counts when its move
+            # lines really went internal -> internal (stock physically moved)
+            "(NOT (ls.is_view OR ld.is_view) OR EXISTS ("
+            "SELECT 1 FROM stock_move_line ml"
+            " JOIN stock_location mls ON mls.id = ml.location_id"
+            " JOIN stock_location mld ON mld.id = ml.location_dest_id"
+            " WHERE ml.move_id = sm.id AND mls.usage = 'internal' AND mld.usage = 'internal'))",
         ]
         if f['src_ids']:
             where.append("ls.warehouse_id = ANY(%(src_ids)s)")
@@ -121,13 +131,17 @@ class InternalTransferDashboard(models.AbstractModel):
 
         cte = """
         WITH loc_wh AS (
-            -- internal location -> owning warehouse, from the location tree
-            SELECT DISTINCT ON (l.id) l.id AS location_id, w.id AS warehouse_id
+            -- location -> owning warehouse, from the location tree. Internal locations,
+            -- plus each warehouse's own VIEW location: some operation types (e.g. JB
+            -- Internal Transfers) use it as the move destination while the move lines
+            -- land on <WH>/Stock, so such moves must still resolve to that warehouse.
+            SELECT DISTINCT ON (l.id) l.id AS location_id, w.id AS warehouse_id,
+                   (l.usage <> 'internal') AS is_view
               FROM stock_warehouse w
               JOIN stock_location v ON v.id = w.view_location_id
               JOIN stock_location l
                 ON left(l.parent_path, length(v.parent_path)) = v.parent_path
-             WHERE l.usage = 'internal'
+             WHERE l.usage = 'internal' OR l.id = w.view_location_id
              ORDER BY l.id, length(v.parent_path) DESC
         ),
         base AS (
