@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Al Khulood - Internal Transfers Dashboard',
-    'version': '19.0.1.1.0',
+    'version': '19.0.1.2.0',
     'category': 'Inventory/Reporting',
     'summary': 'Cost value, sales value and quantity of stock moved between warehouses (Main Store, Garden, shops) with filters and Excel export',
     'description': """
