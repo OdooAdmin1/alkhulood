@@ -14,8 +14,8 @@
             <div class="o_sf_filters">
                 <label>Branch
                     <select t-on-change="(ev) => this.setFilter('warehouse_id', ev.target.value)"
-                            t-att-value="state.filters.warehouse_id">
-                        <option value="">All branches</option>
+                            t-att-value="state.filters.warehouse_id" t-att-disabled="!!state.options.locked_warehouse">
+                        <option value="" t-if="!state.options.locked_warehouse">All branches</option>
                         <t t-foreach="state.options.warehouses" t-as="w" t-key="w.id">
                             <option t-att-value="w.id"><t t-out="w.name"/></option>
                         </t>

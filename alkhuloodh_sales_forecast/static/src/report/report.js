@@ -11,9 +11,10 @@ export class SfReport extends Component {
         this.orm = useService("orm");
         this.root = useRef("root");
         this.state = useState({
-            options: { branches: [], categories: [], origin: "", horizon_end: "", default_date: "" },
+            options: { branches: [], categories: [], origin: "", horizon_end: "", default_date: "", min_date: "", locked: false },
             filters: { date_from: "", date_to: "", metric: "qty", categ_id: "", branch_ids: [] },
             data: null,
+            selected: "",
             error: "",
             loading: false,
             busy: "",
@@ -54,8 +55,8 @@ export class SfReport extends Component {
     }
 
     // ---------------------------------------------------------------- quick date buttons
-    // Dates are the browser's local calendar days (never converted through UTC). Every range is cut to the days the
-    // forecast really covers: from the day after the last actuals to the end of the forecast.
+    // Dates are the browser's local calendar days (never converted through UTC). Every range is cut to the days that have
+    // sales or a forecast: from the first day with sales to the end of the forecast.
     fmtDate(d) {
         const p = (n) => String(n).padStart(2, "0");
         return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
@@ -71,24 +72,29 @@ export class SfReport extends Component {
         const weekStart = add(today, -today.getDay()); // the week runs Sunday to Saturday
         const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
         const monthEnd = (d) => new Date(d.getFullYear(), d.getMonth() + 1, 0);
+        const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
         const defs = [
-            ["today", "Today", today, today],
-            ["tomorrow", "Tomorrow", add(today, 1), add(today, 1)],
-            ["next7", "Next 7 days", today, add(today, 6)],
-            ["week", "This week", weekStart, add(weekStart, 6)],
-            ["nextweek", "Next week", add(weekStart, 7), add(weekStart, 13)],
-            ["month", "This month", monthStart, monthEnd(monthStart)],
+            ["lastmonth", "Last month", lastMonth, monthEnd(lastMonth), true],
+            ["lastweek", "Last week", add(weekStart, -7), add(weekStart, -1), true],
+            ["last7", "Last 7 days", add(today, -7), add(today, -1), true],
+            ["yesterday", "Yesterday", add(today, -1), add(today, -1), true],
+            ["today", "Today", today, today, false],
+            ["tomorrow", "Tomorrow", add(today, 1), add(today, 1), false],
+            ["next7", "Next 7 days", today, add(today, 6), false],
+            ["week", "This week", weekStart, add(weekStart, 6), false],
+            ["nextweek", "Next week", add(weekStart, 7), add(weekStart, 13), false],
+            ["month", "This month", monthStart, monthEnd(monthStart), false],
         ];
-        return defs.map(([key, label, a, b]) => {
+        return defs.map(([key, label, a, b, past]) => {
             let from = this.fmtDate(a);
             let to = this.fmtDate(b);
-            if (from < o.default_date) {
-                from = o.default_date;
+            if (o.min_date && from < o.min_date) {
+                from = o.min_date;
             }
             if (to > o.horizon_end) {
                 to = o.horizon_end;
             }
-            return { key, label, from, to, disabled: from > to };
+            return { key, label, from, to, past, disabled: from > to };
         });
     }
     isActivePreset(p) {
@@ -123,13 +129,18 @@ export class SfReport extends Component {
             if (data.error) {
                 this.state.error = data.error;
                 this.state.data = null;
+                this.state.selected = "";
             } else {
                 this.state.error = "";
                 this.state.data = data;
+                if (!data.days.some((d) => d.date === this.state.selected)) {
+                    this.state.selected = data.days.length ? data.days[0].date : "";
+                }
             }
         } catch (e) {
             this.state.error = (e.data && e.data.message) || e.message || String(e);
             this.state.data = null;
+            this.state.selected = "";
         }
         this.state.loading = false;
         this.applyTheme();
@@ -154,6 +165,29 @@ export class SfReport extends Component {
 
     isChecked(id) {
         return this.state.filters.branch_ids.includes(id);
+    }
+
+    // ---------------------------------------------------------------- one table per day
+    get day() {
+        const d = this.state.data;
+        return d ? d.days.find((x) => x.date === this.state.selected) || null : null;
+    }
+    get dayIndex() {
+        const d = this.state.data;
+        return d ? d.days.findIndex((x) => x.date === this.state.selected) : -1;
+    }
+    selectDay(date) {
+        this.state.selected = date;
+    }
+    stepDay(n) {
+        const d = this.state.data;
+        const i = this.dayIndex + n;
+        if (d && i >= 0 && i < d.days.length) {
+            this.state.selected = d.days[i].date;
+        }
+    }
+    chipText(day) {
+        return day.title.split(" ").slice(0, 3).join(" ");
     }
 
     fmt(v) {
