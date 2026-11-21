@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="amwal_stock_report_setup_view_list" model="ir.ui.view">
+        <field name="name">amwal.khulood.stock.report.setup.list</field>
+        <field name="model">amwal.khulood.stock.report.setup</field>
+        <field name="arch" type="xml">
+            <list editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="kind"/>
+                <field name="warehouse_id" invisible="kind != 'branch'" required="kind == 'branch'"/>
+                <field name="location_id" invisible="kind != 'giveaway_location'" required="kind == 'giveaway_location'"/>
+                <field name="partner_id" invisible="kind != 'giveaway_partner'" required="kind == 'giveaway_partner'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="amwal_stock_report_setup_action" model="ir.actions.act_window">
+        <field name="name">Report Setup</field>
+        <field name="res_model">amwal.khulood.stock.report.setup</field>
+        <field name="view_mode">list</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Add the branches to report on</p>
+            <p>
+                Add one line per branch warehouse. Optionally add the location that
+                counts as Giveaway, and customers whose deliveries should count as
+                Giveaway instead of Delivered.
+            </p>
+        </field>
+    </record>
+</odoo>

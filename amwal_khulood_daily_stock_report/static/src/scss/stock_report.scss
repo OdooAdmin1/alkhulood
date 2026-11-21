@@ -1,0 +1,374 @@
+// Daily Stock Report: a digital version of the branch's paper sheet.
+// Saffron header band and ink-blue figures echo the printed form; the sheet itself
+// stays light so it reads the same in Odoo's light and dark backend.
+
+.amw-report {
+    --amw-saffron: #f5d133;
+    --amw-saffron-soft: #fff6c2;
+    --amw-ink: #1b2a7b;
+    --amw-text: #1a1c1f;
+    --amw-muted: #636b76;
+    --amw-rule: #d8dce0;
+    --amw-warn: #b3402a;
+    --amw-sheet: #ffffff;
+
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 16px;
+    overflow: auto;
+
+    *, *::before, *::after {
+        box-sizing: border-box;
+    }
+
+    .amw-sheet {
+        display: flex;
+        flex-direction: column;
+        flex: 1 1 auto;
+        min-height: 0;
+        max-width: 1500px;
+        width: 100%;
+        margin: 0 auto;
+        background: var(--amw-sheet);
+        color: var(--amw-text);
+        border: 1px solid var(--amw-rule);
+        border-radius: 6px;
+        overflow: hidden;
+        font-variant-numeric: tabular-nums;
+    }
+
+    // ---- Header band --------------------------------------------------
+    .amw-band {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 4px 24px;
+        padding: 14px 20px;
+        background: var(--amw-saffron);
+        color: #1a1c1f;
+        border-bottom: 2px solid #1a1c1f;
+    }
+
+    .amw-band-title {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        gap: 2px 14px;
+    }
+
+    .amw-band h1 {
+        margin: 0;
+        font-size: 1.35rem;
+        font-weight: 700;
+        letter-spacing: 0.01em;
+        color: inherit;
+    }
+
+    .amw-band-branch {
+        font-size: 1.15rem;
+        font-weight: 500;
+    }
+
+    .amw-band-date {
+        font-size: 1rem;
+        font-weight: 500;
+    }
+
+    // ---- Controls ------------------------------------------------------
+    .amw-controls {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px 20px;
+        padding: 12px 20px;
+        border-bottom: 1px solid var(--amw-rule);
+    }
+
+    .amw-stepper,
+    .amw-filters {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .amw-btn,
+    .amw-chip,
+    .amw-date,
+    .amw-input {
+        height: 34px;
+        padding: 0 12px;
+        font: inherit;
+        font-size: 0.9rem;
+        color: var(--amw-text);
+        background: #ffffff;
+        border: 1px solid #b9bfc7;
+        border-radius: 4px;
+        color-scheme: light;
+    }
+
+    .amw-btn,
+    .amw-chip {
+        cursor: pointer;
+
+        &:hover:not(:disabled) {
+            background: var(--amw-saffron-soft);
+            border-color: #1a1c1f;
+        }
+
+        &:disabled {
+            opacity: 0.45;
+            cursor: default;
+        }
+    }
+
+    .amw-icon-btn {
+        width: 34px;
+        padding: 0;
+    }
+
+    .amw-date {
+        min-width: 150px;
+        color: var(--amw-text);
+        background: #ffffff;
+    }
+
+    .amw-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .amw-chip {
+        height: 30px;
+        border-radius: 15px;
+        padding: 0 14px;
+
+        &.is-active {
+            background: #1a1c1f;
+            border-color: #1a1c1f;
+            color: #ffffff;
+            font-weight: 600;
+        }
+    }
+
+    .amw-input {
+        min-width: 180px;
+    }
+
+    .amw-check {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin: 0;
+        font-size: 0.9rem;
+        cursor: pointer;
+    }
+
+    .amw-btn:focus-visible,
+    .amw-chip:focus-visible,
+    .amw-date:focus-visible,
+    .amw-input:focus-visible,
+    .amw-check input:focus-visible,
+    .amw-sortable:focus-visible {
+        outline: 2px solid var(--amw-ink);
+        outline-offset: 2px;
+    }
+
+    // ---- Notes (empty, loading, error) -------------------------------------
+    .amw-note {
+        padding: 36px 20px;
+        text-align: center;
+        color: var(--amw-muted);
+    }
+
+    .amw-note-error {
+        color: var(--amw-warn);
+        font-weight: 600;
+    }
+
+    // ---- Table -----------------------------------------------------------
+    .amw-table-wrap {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow: auto;
+
+        &.is-loading {
+            opacity: 0.55;
+            transition: opacity 0.15s;
+        }
+    }
+
+    .amw-table {
+        width: 100%;
+        min-width: 760px;
+        border-collapse: separate;
+        border-spacing: 0;
+        font-size: 0.92rem;
+
+        th,
+        td {
+            padding: 0 14px;
+            border-bottom: 1px solid var(--amw-rule);
+            background: var(--amw-sheet);
+            vertical-align: middle;
+            color: var(--amw-text);
+        }
+
+        tbody tr {
+            height: 50px;
+
+            &:hover th,
+            &:hover td {
+                background: #f6f7f9;
+            }
+        }
+
+        // Header row (saffron, like the printed form)
+        .amw-head-row th {
+            position: sticky;
+            top: 0;
+            z-index: 3;
+            height: 46px;
+            background: var(--amw-saffron);
+            border-bottom: 2px solid #1a1c1f;
+            font-weight: 700;
+            white-space: nowrap;
+            color: #1a1c1f;
+        }
+
+        // Total rows stay visible under the header while the products scroll
+        .amw-total-row {
+            height: 42px;
+
+            th,
+            td {
+                position: sticky;
+                top: var(--amw-top, 46px);
+                z-index: 2;
+                height: 42px;
+                background: var(--amw-saffron-soft);
+                border-bottom: 1px solid #1a1c1f;
+                font-weight: 700;
+            }
+        }
+
+        // Item column
+        .amw-item {
+            position: sticky;
+            left: 0;
+            min-width: 260px;
+            max-width: 380px;
+            text-align: left;
+            font-weight: 500;
+            border-right: 1px solid var(--amw-rule);
+        }
+
+        .amw-head-row .amw-item,
+        .amw-total-row .amw-item {
+            z-index: 4;
+        }
+
+        tbody .amw-item {
+            z-index: 1;
+        }
+
+        .amw-name {
+            display: block;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .amw-meta {
+            display: block;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 0.78rem;
+            font-weight: 400;
+            color: var(--amw-muted);
+
+            > span + span::before {
+                content: "  ";
+                white-space: pre;
+            }
+        }
+
+        .amw-total-row .amw-meta {
+            font-weight: 400;
+        }
+
+        .amw-code {
+            font-weight: 500;
+        }
+
+        // Number columns
+        .amw-num {
+            min-width: 112px;
+            text-align: right;
+            color: var(--amw-ink);
+            font-weight: 500;
+        }
+
+        .amw-head-row .amw-num {
+            color: #1a1c1f;
+        }
+
+        .amw-balance {
+            font-weight: 700;
+        }
+
+        .amw-zero {
+            color: #aab0b8;
+            font-weight: 400;
+        }
+
+        .amw-neg {
+            color: var(--amw-warn);
+        }
+
+        .amw-warn {
+            color: var(--amw-warn);
+            font-weight: 700;
+        }
+
+        .amw-head-row .amw-col-warn {
+            color: var(--amw-warn);
+        }
+
+        .amw-sortable {
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .amw-sort-idle {
+            opacity: 0.35;
+        }
+    }
+}
+
+@media (max-width: 767px) {
+    .amw-report {
+        padding: 8px;
+
+        .amw-band,
+        .amw-controls {
+            padding-left: 12px;
+            padding-right: 12px;
+        }
+
+        .amw-table .amw-item {
+            min-width: 170px;
+        }
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .amw-report .amw-table-wrap.is-loading {
+        transition: none;
+    }
+}

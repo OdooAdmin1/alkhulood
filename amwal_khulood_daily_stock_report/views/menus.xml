@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="amwal_stock_report_client_action" model="ir.actions.client">
+        <field name="name">Daily Stock Report</field>
+        <field name="tag">amwal_khulood_daily_stock_report</field>
+    </record>
+
+    <menuitem id="menu_amwal_stock_report_root"
+              name="Daily Stock Report"
+              web_icon="stock,static/description/icon.png"
+              sequence="95"/>
+
+    <menuitem id="menu_amwal_stock_report_dashboard"
+              name="Report"
+              parent="menu_amwal_stock_report_root"
+              action="amwal_stock_report_client_action"
+              groups="group_amwal_stock_report_owner"
+              sequence="10"/>
+
+    <menuitem id="menu_amwal_stock_report_setup"
+              name="Configuration"
+              parent="menu_amwal_stock_report_root"
+              action="amwal_stock_report_setup_action"
+              groups="base.group_system"
+              sequence="90"/>
+</odoo>

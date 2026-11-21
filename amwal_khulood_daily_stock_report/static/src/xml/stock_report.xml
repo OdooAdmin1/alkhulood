@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="amwal_khulood_daily_stock_report.Report">
+        <div class="amw-report">
+            <t t-set="v" t-value="view"/>
+            <div class="amw-sheet">
+
+                <header class="amw-band">
+                    <div class="amw-band-title">
+                        <h1>Daily stock report</h1>
+                        <span class="amw-band-branch" t-esc="branchName"/>
+                    </div>
+                    <div class="amw-band-date" t-esc="dateLabel"/>
+                </header>
+
+                <section class="amw-controls">
+                    <div class="amw-stepper" role="group" aria-label="Report date">
+                        <button type="button" class="amw-btn amw-icon-btn" aria-label="Previous day"
+                                t-on-click="() => this.shiftDay(-1)">
+                            <i class="fa fa-chevron-left"/>
+                        </button>
+                        <input type="date" class="amw-date" aria-label="Report date"
+                               t-att-value="state.date" t-att-max="today"
+                               t-on-change="onDateChange"/>
+                        <button type="button" class="amw-btn amw-icon-btn" aria-label="Next day"
+                                t-att-disabled="isToday" t-on-click="() => this.shiftDay(1)">
+                            <i class="fa fa-chevron-right"/>
+                        </button>
+                        <button type="button" class="amw-btn" t-att-disabled="isToday" t-on-click="goToday">Today</button>
+                    </div>
+
+                    <div class="amw-chips" role="group" aria-label="Branch" t-if="state.branches.length">
+                        <button type="button" t-attf-class="amw-chip #{!state.branchId ? 'is-active' : ''}"
+                                t-on-click="() => this.selectBranch(false)">All branches</button>
+                        <t t-foreach="state.branches" t-as="branch" t-key="branch.id">
+                            <button type="button"
+                                    t-attf-class="amw-chip #{state.branchId === branch.id ? 'is-active' : ''}"
+                                    t-on-click="() => this.selectBranch(branch.id)"
+                                    t-esc="branch.name"/>
+                        </t>
+                    </div>
+
+                    <div class="amw-filters">
+                        <input type="search" class="amw-input" placeholder="Search product or code"
+                               aria-label="Search product or code"
+                               t-att-value="state.search" t-on-input="onSearch"/>
+                        <select class="amw-input" aria-label="Product category" t-on-change="onCategory">
+                            <option value="">All categories</option>
+                            <t t-foreach="categories" t-as="category" t-key="category">
+                                <option t-att-value="category" t-att-selected="state.category === category"
+                                        t-esc="category"/>
+                            </t>
+                        </select>
+                        <label class="amw-check">
+                            <input type="checkbox" t-att-checked="state.onlyMovement" t-on-change="onToggleMovement"/>
+                            <span>Only products with movement</span>
+                        </label>
+                    </div>
+                </section>
+
+                <div t-if="state.error" class="amw-note amw-note-error" role="alert" t-esc="state.error"/>
+                <div t-elif="noBranches" class="amw-note">
+                    No branches are set up yet. Ask your administrator to add them under Daily Stock Report, Configuration.
+                </div>
+                <div t-elif="state.loading and !state.data" class="amw-note">Loading the report…</div>
+                <div t-elif="!v.rows.length" class="amw-note">
+                    No products match this day and these filters.
+                </div>
+                <div t-else="" t-attf-class="amw-table-wrap #{state.loading ? 'is-loading' : ''}">
+                    <table class="amw-table">
+                        <thead>
+                            <tr class="amw-head-row">
+                                <th class="amw-item amw-sortable" t-on-click="() => this.sortBy('name')">
+                                    Item <i t-attf-class="fa #{sortIcon('name')}"/>
+                                </th>
+                                <t t-foreach="v.cols" t-as="col" t-key="col.key">
+                                    <th t-attf-class="amw-num amw-sortable #{col.warn ? 'amw-col-warn' : ''}"
+                                        t-att-title="col.hint" t-on-click="() => this.sortBy(col.key)">
+                                        <t t-esc="col.label"/> <i t-attf-class="fa #{sortIcon(col.key)}"/>
+                                    </th>
+                                </t>
+                            </tr>
+                            <tr t-foreach="v.totals" t-as="total" t-key="total.uom"
+                                class="amw-total-row" t-att-style="totalRowStyle(total_index)">
+                                <th class="amw-item">
+                                    <span class="amw-total-label">Total<t t-if="v.totals.length > 1"> (<t t-esc="total.uom"/>)</t></span>
+                                    <span class="amw-meta"><t t-esc="total.count"/> products</span>
+                                </th>
+                                <td t-foreach="v.cols" t-as="col" t-key="col.key"
+                                    t-att-class="totalCellClass(total, col)" t-esc="fmt(total[col.key])"/>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr t-foreach="v.rows" t-as="row" t-key="row.id">
+                                <th class="amw-item" scope="row">
+                                    <span class="amw-name" t-esc="row.name"/>
+                                    <span class="amw-meta">
+                                        <span t-if="row.code" class="amw-code" t-esc="row.code"/>
+                                        <span t-if="row.category" t-esc="row.category"/>
+                                        <span class="amw-uom" t-esc="row.uom"/>
+                                    </span>
+                                </th>
+                                <td t-foreach="v.cols" t-as="col" t-key="col.key"
+                                    t-att-class="cellClass(row, col)" t-esc="fmt(row[col.key])"/>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+        </div>
+    </t>
+
+</templates>
