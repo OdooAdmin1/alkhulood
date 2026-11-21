@@ -29,3 +29,5 @@ access_sf_rbranch_system,sf report branch system,model_alkhuloodh_sf_report_bran
 access_sf_rline_user,sf report line user,model_alkhuloodh_sf_report_line,group_sf_user,1,0,0,0
 access_sf_rline_manager,sf report line manager,model_alkhuloodh_sf_report_line,group_sf_manager,1,1,1,1
 access_sf_rline_system,sf report line system,model_alkhuloodh_sf_report_line,base.group_system,1,1,1,1
+access_sf_vbranch_manager,sf viewer branch manager,model_alkhuloodh_sf_viewer_branch,group_sf_manager,1,1,1,1
+access_sf_vbranch_system,sf viewer branch system,model_alkhuloodh_sf_viewer_branch,base.group_system,1,1,1,1

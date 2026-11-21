@@ -13,16 +13,16 @@
             <div class="o_sf_presets" t-if="presets.length">
                 <span>Quick select</span>
                 <button t-foreach="presets" t-as="p" t-key="p.key"
-                        t-att-class="'o_sf_pill' + (isActivePreset(p) ? ' active' : '')"
+                        t-att-class="'o_sf_pill' + (isActivePreset(p) ? ' active' : '') + (p.past ? ' past' : '')"
                         t-att-disabled="p.disabled"
-                        t-att-title="p.disabled ? 'Outside the forecast period' : p.from + ' to ' + p.to"
+                        t-att-title="p.disabled ? 'No sales or forecast on these days' : p.from + ' to ' + p.to"
                         t-on-click="() => this.pickPreset(p)"><t t-out="p.label"/></button>
             </div>
 
             <div class="o_sf_rfilters">
                 <label>From
                     <input type="date" t-att-value="state.filters.date_from"
-                           t-att-min="state.options.default_date" t-att-max="state.options.horizon_end"
+                           t-att-min="state.options.min_date" t-att-max="state.options.horizon_end"
                            t-on-change="(ev) => this.setFilter('date_from', ev.target.value)"/>
                 </label>
                 <label>To
@@ -44,7 +44,12 @@
                         </t>
                     </select>
                 </label>
-                <details class="o_sf_branchpick">
+                <t t-if="state.options.locked">
+                    <label>Branch
+                        <span class="o_sf_lockedbranch"><t t-foreach="state.options.branches" t-as="b" t-key="b.id"><t t-out="b.name"/></t></span>
+                    </label>
+                </t>
+                <details class="o_sf_branchpick" t-else="">
                     <summary>Branches (<t t-out="state.filters.branch_ids.length"/> of <t t-out="state.options.branches.length"/>)</summary>
                     <div class="o_sf_branchlist">
                         <label class="o_sf_chk" t-foreach="state.options.branches" t-as="b" t-key="b.id">
@@ -60,7 +65,7 @@
                 <button class="o_sf_btn" t-att-disabled="!state.data or state.busy" t-on-click="() => this.download('pdf')">
                     <t t-if="state.busy === 'pdf'">Preparing…</t><t t-else="">Download PDF</t>
                 </button>
-                <button class="o_sf_btn" t-att-disabled="!state.data" t-on-click="print">Print</button>
+                <button class="o_sf_btn" t-att-disabled="!state.data" t-on-click="print">Print this day</button>
             </div>
 
             <div class="o_sf_rerror" t-if="state.error"><t t-out="state.error"/></div>
@@ -69,37 +74,79 @@
                 <div class="o_sf_rnotes" t-if="state.data.notes.length">
                     <div t-foreach="state.data.notes" t-as="note" t-key="note_index"><t t-out="note"/></div>
                 </div>
-                <div class="o_sf_rtitle">
-                    <b><t t-out="state.data.subtitle"/></b>
+
+                <div class="o_sf_days">
+                    <button class="o_sf_step" t-att-disabled="dayIndex &lt;= 0" t-on-click="() => this.stepDay(-1)" title="Previous day">‹</button>
+                    <button t-foreach="state.data.days" t-as="d" t-key="d.date"
+                            t-att-class="'o_sf_chip' + (d.date === state.selected ? ' active' : '') + (d.kind === 'past' ? ' past' : '')"
+                            t-att-title="d.title + ' · ' + d.hijri + (d.kind === 'past' ? ' (actual and forecast)' : ' (forecast)')"
+                            t-on-click="() => this.selectDay(d.date)"><t t-out="chipText(d)"/></button>
+                    <button class="o_sf_step" t-att-disabled="dayIndex &gt;= state.data.days.length - 1" t-on-click="() => this.stepDay(1)" title="Next day">›</button>
                 </div>
-                <div class="o_sf_rwrap">
-                    <table class="o_sf_rtable">
-                        <thead>
-                            <tr>
-                                <th class="o_sf_pcol">Product</th>
-                                <th class="num" t-foreach="state.data.columns" t-as="c" t-key="c.id" t-att-title="c.name"><t t-out="c.short"/></th>
-                                <th class="num o_sf_tcol">Total</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr t-foreach="state.data.rows" t-as="r" t-key="r_index" t-att-class="r.note ? 'o_sf_rmuted' : ''">
-                                <td class="o_sf_pcol" t-att-title="r.name or r.label"><t t-out="r.label"/><small t-if="r.note" class="o_sf_rnote"> · <t t-out="r.note"/></small></td>
-                                <td t-foreach="r.cells" t-as="c" t-key="c_index" t-att-class="'num' + (c.alloc ? ' o_sf_est' : '')">
-                                    <t t-out="fmt(c.v)"/>
-                                </td>
-                                <td class="num o_sf_tcol"><b><t t-out="fmt(r.total)"/></b></td>
-                            </tr>
-                        </tbody>
-                        <tfoot>
-                            <tr>
-                                <td class="o_sf_pcol"><b>All products</b></td>
-                                <td class="num" t-foreach="state.data.totals.cells" t-as="v" t-key="v_index"><b><t t-out="fmt(v)"/></b></td>
-                                <td class="num o_sf_tcol"><b><t t-out="fmt(state.data.totals.total)"/></b></td>
-                            </tr>
-                        </tfoot>
-                    </table>
-                </div>
-                <p class="o_sf_rfoot" t-foreach="state.data.footnotes" t-as="line" t-key="line_index"><t t-out="line"/></p>
+
+                <t t-if="day">
+                    <div class="o_sf_daytitle">
+                        <span class="o_sf_dt"><t t-out="day.title"/></span>
+                        <span class="o_sf_hj"><t t-out="day.hijri"/></span>
+                        <span t-att-class="'o_sf_tag ' + day.kind">
+                            <t t-if="day.kind === 'past'">Past day: actual sales and forecast</t><t t-else="">Forecast</t>
+                        </span>
+                        <span class="o_sf_sub"><t t-out="state.data.unit"/></span>
+                    </div>
+                    <div class="o_sf_rwrap">
+                        <table t-att-class="'o_sf_rtable' + (day.kind === 'past' ? ' o_sf_two' : '')">
+                            <thead>
+                                <tr class="o_sf_h1">
+                                    <th class="o_sf_pcol" t-att-rowspan="day.kind === 'past' ? 2 : 1">Product</th>
+                                    <th class="num" t-foreach="state.data.columns" t-as="c" t-key="c.id" t-att-title="c.name"
+                                        t-att-colspan="day.kind === 'past' ? 2 : 1"><t t-out="c.short"/></th>
+                                    <th class="num o_sf_tcol" t-att-colspan="day.kind === 'past' ? 2 : 1">Total</th>
+                                </tr>
+                                <tr class="o_sf_h2" t-if="day.kind === 'past'">
+                                    <t t-foreach="state.data.columns" t-as="c" t-key="c.id">
+                                        <th class="num">Actual</th><th class="num">Forecast</th>
+                                    </t>
+                                    <th class="num o_sf_tcol">Actual</th><th class="num">Forecast</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="day.rows" t-as="r" t-key="r_index" t-att-class="r.note ? 'o_sf_rmuted' : ''">
+                                    <td class="o_sf_pcol" t-att-title="r.name or r.label"><t t-out="r.label"/><small t-if="r.note" class="o_sf_rnote"> · <t t-out="r.note"/></small></td>
+                                    <t t-foreach="r.cells" t-as="c" t-key="c_index">
+                                        <t t-if="day.kind === 'past'">
+                                            <td class="num o_sf_act"><t t-out="fmt(c.a)"/></td>
+                                            <td t-att-class="'num o_sf_fc' + (c.alloc ? ' o_sf_est' : '')"><t t-out="fmt(c.v)"/></td>
+                                        </t>
+                                        <td t-else="" t-att-class="'num' + (c.alloc ? ' o_sf_est' : '')"><t t-out="fmt(c.v)"/></td>
+                                    </t>
+                                    <t t-if="day.kind === 'past'">
+                                        <td class="num o_sf_tcol o_sf_act"><b><t t-out="fmt(r.total_a)"/></b></td>
+                                        <td class="num o_sf_fc"><b><t t-out="fmt(r.total_v)"/></b></td>
+                                    </t>
+                                    <td t-else="" class="num o_sf_tcol"><b><t t-out="fmt(r.total_v)"/></b></td>
+                                </tr>
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td class="o_sf_pcol"><b>All products</b></td>
+                                    <t t-foreach="state.data.columns" t-as="c" t-key="c.id">
+                                        <t t-if="day.kind === 'past'">
+                                            <td class="num"><b><t t-out="fmt(day.totals.a[c_index])"/></b></td>
+                                            <td class="num"><b><t t-out="fmt(day.totals.v[c_index])"/></b></td>
+                                        </t>
+                                        <td t-else="" class="num"><b><t t-out="fmt(day.totals.v[c_index])"/></b></td>
+                                    </t>
+                                    <t t-if="day.kind === 'past'">
+                                        <td class="num o_sf_tcol"><b><t t-out="fmt(day.totals.total_a)"/></b></td>
+                                        <td class="num"><b><t t-out="fmt(day.totals.total_v)"/></b></td>
+                                    </t>
+                                    <td t-else="" class="num o_sf_tcol"><b><t t-out="fmt(day.totals.total_v)"/></b></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </t>
+                <p class="o_sf_rfoot" t-foreach="day and day.kind === 'past' ? state.data.footnotes_past : state.data.footnotes_day" t-as="line" t-key="line_index"><t t-out="line"/></p>
                 <p class="o_sf_rfoot"><t t-out="state.data.source"/></p>
             </t>
         </div>

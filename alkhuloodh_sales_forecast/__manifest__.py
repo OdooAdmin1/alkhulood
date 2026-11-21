@@ -1,6 +1,6 @@
 {
     'name': 'Alkhuloodh Sales Forecast',
-    'version': '19.0.1.5.6',
+    'version': '19.0.1.6.0',
     'summary': 'Hijri-aware sales forecast (quantity and revenue) by branch, category and product',
     'description': """
 Step 1: settings, Hijri calendar, aggregated daily POS sales and a reconciliation summary.

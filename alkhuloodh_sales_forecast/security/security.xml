@@ -1,8 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Placeholder groups. Real access levels are decided after testing and the client demo. -->
+    <!-- Three levels. Viewer (POS users): Dashboard and Forecast report only, one branch each. User (office): everything read-only,
+         all branches. Manager: also Configuration, Report setup, dates and holidays. Each level includes the one below. -->
+    <record id="group_sf_viewer" model="res.groups">
+        <field name="name">Sales Forecast: Viewer</field>
+    </record>
     <record id="group_sf_user" model="res.groups">
         <field name="name">Sales Forecast: User</field>
+        <field name="implied_ids" eval="[(4, ref('group_sf_viewer'))]"/>
     </record>
     <record id="group_sf_manager" model="res.groups">
         <field name="name">Sales Forecast: Manager</field>
