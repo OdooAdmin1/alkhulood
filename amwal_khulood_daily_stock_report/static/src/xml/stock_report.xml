@@ -52,12 +52,26 @@
                                         t-esc="category"/>
                             </t>
                         </select>
+                        <select class="amw-input" aria-label="Unit of measure" t-on-change="onUom">
+                            <option value="">All units</option>
+                            <t t-foreach="uoms" t-as="uom" t-key="uom">
+                                <option t-att-value="uom" t-att-selected="state.uom === uom" t-esc="uom"/>
+                            </t>
+                        </select>
                         <label class="amw-check">
                             <input type="checkbox" t-att-checked="state.onlyMovement" t-on-change="onToggleMovement"/>
                             <span>Only products with movement</span>
                         </label>
+                        <label class="amw-check">
+                            <input type="checkbox" t-att-checked="state.showTotals" t-on-change="onToggleTotals"/>
+                            <span>Show totals at the end</span>
+                        </label>
                     </div>
                 </section>
+
+                <div t-if="noMovementDay and !state.error" class="amw-hint">
+                    No sales, transfers or returns were recorded on this day, so only the stock balances are shown. Use the arrows or the date box to pick another day.
+                </div>
 
                 <div t-if="state.error" class="amw-note amw-note-error" role="alert" t-esc="state.error"/>
                 <div t-elif="noBranches" class="amw-note">
@@ -81,15 +95,6 @@
                                     </th>
                                 </t>
                             </tr>
-                            <tr t-foreach="v.totals" t-as="total" t-key="total.uom"
-                                class="amw-total-row" t-att-style="totalRowStyle(total_index)">
-                                <th class="amw-item">
-                                    <span class="amw-total-label">Total<t t-if="v.totals.length > 1"> (<t t-esc="total.uom"/>)</t></span>
-                                    <span class="amw-meta"><t t-esc="total.count"/> products</span>
-                                </th>
-                                <td t-foreach="v.cols" t-as="col" t-key="col.key"
-                                    t-att-class="totalCellClass(total, col)" t-esc="fmt(total[col.key])"/>
-                            </tr>
                         </thead>
                         <tbody>
                             <tr t-foreach="v.rows" t-as="row" t-key="row.id">
@@ -104,6 +109,16 @@
                                 <td t-foreach="v.cols" t-as="col" t-key="col.key"
                                     t-att-class="cellClass(row, col)" t-esc="fmt(row[col.key])"/>
                             </tr>
+                            <t t-if="state.showTotals">
+                                <tr t-foreach="v.totals" t-as="total" t-key="total.uom" class="amw-total-inline">
+                                    <th class="amw-item">
+                                        <span class="amw-total-label">Total<t t-if="v.totals.length > 1"> (<t t-esc="total.uom"/>)</t></span>
+                                        <span class="amw-meta"><t t-esc="total.count"/> products</span>
+                                    </th>
+                                    <td t-foreach="v.cols" t-as="col" t-key="col.key"
+                                        t-att-class="totalCellClass(total, col)" t-esc="fmt(total[col.key])"/>
+                                </tr>
+                            </t>
                         </tbody>
                     </table>
                 </div>

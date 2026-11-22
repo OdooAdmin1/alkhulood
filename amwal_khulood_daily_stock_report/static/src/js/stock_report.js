@@ -34,9 +34,6 @@ const COLUMNS = [
     { key: "closing", label: "Closing Balance", always: true },
 ];
 
-const HEADER_HEIGHT = 46;
-const TOTAL_ROW_HEIGHT = 42;
-
 function bahrainToday() {
     // en-CA formats as YYYY-MM-DD
     return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Bahrain" }).format(new Date());
@@ -63,6 +60,8 @@ export class AmwalKhuloodStockReport extends Component {
             data: null,
             search: "",
             category: "",
+            uom: "",
+            showTotals: false,
             onlyMovement: false,
             sortKey: "name",
             sortDir: 1,
@@ -106,6 +105,9 @@ export class AmwalKhuloodStockReport extends Component {
             this.state.data = data;
             if (this.state.category && !data.categories.includes(this.state.category)) {
                 this.state.category = "";
+            }
+            if (this.state.uom && !data.rows.some((row) => row.uom === this.state.uom)) {
+                this.state.uom = "";
             }
         } catch (error) {
             if (requestId !== this.requestId) {
@@ -157,6 +159,16 @@ export class AmwalKhuloodStockReport extends Component {
         return (this.state.data && this.state.data.categories) || [];
     }
 
+    get uoms() {
+        const data = this.state.data;
+        return data ? [...new Set(data.rows.map((row) => row.uom))].sort() : [];
+    }
+
+    get noMovementDay() {
+        const data = this.state.data;
+        return Boolean(data && data.rows.length && !data.rows.some((row) => row.moved));
+    }
+
     get view() {
         const data = this.state.data;
         if (!data) {
@@ -168,6 +180,9 @@ export class AmwalKhuloodStockReport extends Component {
         const query = this.state.search.trim().toLowerCase();
         const rows = data.rows.filter((row) => {
             if (this.state.category && row.category !== this.state.category) {
+                return false;
+            }
+            if (this.state.uom && row.uom !== this.state.uom) {
                 return false;
             }
             if (this.state.onlyMovement && !row.moved) {
@@ -241,10 +256,6 @@ export class AmwalKhuloodStockReport extends Component {
         return classes.join(" ");
     }
 
-    totalRowStyle(index) {
-        return "--amw-top:" + (HEADER_HEIGHT + index * TOTAL_ROW_HEIGHT) + "px";
-    }
-
     sortIcon(key) {
         if (this.state.sortKey !== key) {
             return "fa-sort amw-sort-idle";
@@ -286,6 +297,14 @@ export class AmwalKhuloodStockReport extends Component {
 
     onCategory(ev) {
         this.state.category = ev.target.value;
+    }
+
+    onUom(ev) {
+        this.state.uom = ev.target.value;
+    }
+
+    onToggleTotals(ev) {
+        this.state.showTotals = ev.target.checked;
     }
 
     onToggleMovement(ev) {

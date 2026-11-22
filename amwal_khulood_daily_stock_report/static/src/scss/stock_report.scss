@@ -156,7 +156,14 @@
     }
 
     .amw-input {
-        min-width: 180px;
+        width: 200px;
+        max-width: 100%;
+    }
+
+    // The open list of a dropdown must stay readable in Odoo's dark theme too.
+    select.amw-input option {
+        background: #ffffff;
+        color: #1a1c1f;
     }
 
     .amw-check {
@@ -176,6 +183,14 @@
     .amw-sortable:focus-visible {
         outline: 2px solid var(--amw-ink);
         outline-offset: 2px;
+    }
+
+    .amw-hint {
+        padding: 10px 20px;
+        background: var(--amw-saffron-soft);
+        color: #1a1c1f;
+        border-bottom: 1px solid var(--amw-rule);
+        font-size: 0.9rem;
     }
 
     // ---- Notes (empty, loading, error) -------------------------------------
@@ -240,18 +255,13 @@
             color: #1a1c1f;
         }
 
-        // Total rows stay visible under the header while the products scroll
-        .amw-total-row {
+        // Totals (optional) are plain rows at the end of the list, never pinned
+        .amw-total-inline {
             height: 42px;
 
             th,
             td {
-                position: sticky;
-                top: var(--amw-top, 46px);
-                z-index: 2;
-                height: 42px;
                 background: var(--amw-saffron-soft);
-                border-bottom: 1px solid #1a1c1f;
                 font-weight: 700;
             }
         }
@@ -267,8 +277,7 @@
             border-right: 1px solid var(--amw-rule);
         }
 
-        .amw-head-row .amw-item,
-        .amw-total-row .amw-item {
+        .amw-head-row .amw-item {
             z-index: 4;
         }
 
@@ -298,7 +307,7 @@
             }
         }
 
-        .amw-total-row .amw-meta {
+        .amw-total-inline .amw-meta {
             font-weight: 400;
         }
 
