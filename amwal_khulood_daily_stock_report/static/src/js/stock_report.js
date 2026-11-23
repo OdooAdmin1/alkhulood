@@ -12,7 +12,18 @@ const COLUMNS = [
     { key: "opening", label: "Opening Balance", always: true },
     { key: "received", label: "Received", always: true },
     { key: "sold", label: "Sold", always: true },
-    { key: "giveaway", label: "Giveaway", always: true },
+    {
+        key: "forecast",
+        label: "Forecast",
+        always: true,
+        hint: "What the Sales Forecast expected this branch to sell on this day. Italic means an estimate. A dash means there is no forecast for this product.",
+    },
+    {
+        key: "giveaway",
+        label: "Giveaway",
+        always: true,
+        hint: "Delivered to a customer whose name starts with OWN",
+    },
     { key: "sample", label: "Sample", always: true },
     { key: "returned", label: "Returned", always: true },
     {
@@ -23,7 +34,7 @@ const COLUMNS = [
     {
         key: "delivered",
         label: "Delivered",
-        hint: "Delivered to a customer against a sales order (not a POS sale)",
+        hint: "Delivered to a customer against a sales order (not a POS sale and not an OWN customer)",
     },
     {
         key: "other",
@@ -242,11 +253,20 @@ export class AmwalKhuloodStockReport extends Component {
         if (col.key === "opening" || col.key === "closing") {
             classes.push("amw-balance");
         }
+        if (col.key === "forecast") {
+            classes.push("amw-forecast");
+            if (row.estimate) {
+                classes.push("amw-estimate");
+            }
+        }
         return classes.join(" ");
     }
 
     totalCellClass(total, col) {
         const classes = ["amw-num"];
+        if (col.key === "forecast") {
+            classes.push("amw-forecast");
+        }
         if (!total[col.key]) {
             classes.push("amw-zero");
         }

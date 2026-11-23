@@ -327,6 +327,16 @@
             color: #1a1c1f;
         }
 
+        // Forecast is not a stock figure, so it is tinted apart from the paper columns
+        .amw-forecast {
+            background: #f1f4fb;
+            color: #3c4b6e;
+        }
+
+        .amw-estimate {
+            font-style: italic;
+        }
+
         .amw-balance {
             font-weight: 700;
         }

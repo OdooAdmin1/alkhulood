@@ -75,7 +75,7 @@
 
                 <div t-if="state.error" class="amw-note amw-note-error" role="alert" t-esc="state.error"/>
                 <div t-elif="noBranches" class="amw-note">
-                    No branches are set up yet. Ask your administrator to add them under Daily Stock Report, Configuration.
+                    No branches found. Ask your administrator to check Sales Forecast, Report setup, Report branches.
                 </div>
                 <div t-elif="state.loading and !state.data" class="amw-note">Loading the report…</div>
                 <div t-elif="!v.rows.length" class="amw-note">
@@ -103,7 +103,7 @@
                                     <span class="amw-meta">
                                         <span t-if="row.code" class="amw-code" t-esc="row.code"/>
                                         <span t-if="row.category" t-esc="row.category"/>
-                                        <span class="amw-uom" t-esc="row.uom"/>
+                                        <span t-esc="row.uom"/>
                                     </span>
                                 </th>
                                 <td t-foreach="v.cols" t-as="col" t-key="col.key"
@@ -112,7 +112,7 @@
                             <t t-if="state.showTotals">
                                 <tr t-foreach="v.totals" t-as="total" t-key="total.uom" class="amw-total-inline">
                                     <th class="amw-item">
-                                        <span class="amw-total-label">Total<t t-if="v.totals.length > 1"> (<t t-esc="total.uom"/>)</t></span>
+                                        <span>Total<t t-if="v.totals.length > 1"> (<t t-esc="total.uom"/>)</t></span>
                                         <span class="amw-meta"><t t-esc="total.count"/> products</span>
                                     </th>
                                     <td t-foreach="v.cols" t-as="col" t-key="col.key"

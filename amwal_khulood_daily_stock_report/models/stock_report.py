@@ -1,3 +1,4 @@
+import re
 from collections import defaultdict
 from datetime import datetime, time, timedelta
 
@@ -31,6 +32,10 @@ MOVEMENT_KEYS = [k for k in COLUMN_KEYS if k not in ("opening", "closing")]
 
 POS_ORDER_STATES = ("paid", "done", "invoiced")
 
+# A giveaway is a delivery to a customer whose name starts with the word OWN,
+# for example "OWN. Mohamed Baselar". "Owned by ..." or "Owner ..." do not match.
+OWN_CUSTOMER = re.compile(r"\s*own\b", re.IGNORECASE)
+
 
 class AmwalKhuloodStockReport(models.AbstractModel):
     """Data provider for the owner-only Daily Stock Report dashboard.
@@ -41,8 +46,10 @@ class AmwalKhuloodStockReport(models.AbstractModel):
     * Opening  = stock now - all done moves since the start of that day
     * Received / Returned / Giveaway / Transferred out / Delivered come from the
       done stock moves of that day, classified by where the stock came from or went to.
+      Deliveries to a customer whose name starts with OWN are Giveaway.
     * Sold / Sample come from POS lines: lines with a price are Sold (refunds net
       off), lines at price 0 or 100% discount are Sample.
+    * Forecast is the quantity the Sales Forecast module expected for that day.
     * Other is whatever is left, so that
       Opening + Received - Sold - Giveaway - Sample - Returned - Transferred out
       - Delivered + Other = Closing always holds.
@@ -70,7 +77,7 @@ class AmwalKhuloodStockReport(models.AbstractModel):
         report = self.sudo()
         return [
             {"id": warehouse.id, "name": warehouse.name}
-            for warehouse in report._configured_branches()
+            for warehouse in report._branches()
         ]
 
     @api.model
@@ -82,11 +89,11 @@ class AmwalKhuloodStockReport(models.AbstractModel):
     # ------------------------------------------------------------------
     # Configuration helpers
     # ------------------------------------------------------------------
-    def _setup_records(self):
-        return self.env["amwal.khulood.stock.report.setup"].search([])
-
-    def _configured_branches(self):
-        return self._setup_records().filtered(lambda r: r.kind == "branch").mapped("warehouse_id")
+    def _branches(self):
+        """The branches of the report: those shown in Sales Forecast > Report setup > Report branches."""
+        Branch = self.env["alkhuloodh.sf.report.branch"]
+        Branch._ensure()
+        return Branch.search([("show", "=", True)]).mapped("warehouse_id")
 
     def _internal_locations(self, warehouses):
         Location = self.env["stock.location"].with_context(active_test=False)
@@ -131,6 +138,12 @@ class AmwalKhuloodStockReport(models.AbstractModel):
         if "is_storable" in product._fields:
             return product.is_storable
         return product.type == "product"
+
+    @staticmethod
+    def _is_own_customer(partner):
+        return bool(partner) and any(
+            OWN_CUSTOMER.match(name or "") for name in (partner.name, partner.commercial_partner_id.name)
+        )
 
     @staticmethod
     def _boundary_domain(loc_ids):
@@ -197,8 +210,6 @@ class AmwalKhuloodStockReport(models.AbstractModel):
         self,
         locations,
         other_branch_locations,
-        giveaway_locations,
-        giveaway_partner_ids,
         pos_types,
         pos_return_types,
         start,
@@ -211,7 +222,6 @@ class AmwalKhuloodStockReport(models.AbstractModel):
         """
         loc_ids = set(locations.ids)
         other_branch_ids = set(other_branch_locations.ids)
-        giveaway_ids = set(giveaway_locations.ids)
         buckets = defaultdict(lambda: defaultdict(float))
         domain = [
             ("state", "=", "done"),
@@ -231,11 +241,9 @@ class AmwalKhuloodStockReport(models.AbstractModel):
                     bucket = "received"
             else:
                 # Stock leaving the branch.
-                if destination.id in giveaway_ids:
-                    bucket = "giveaway"
-                elif destination.usage == "customer":
-                    partner = move.picking_id.partner_id
-                    bucket = "giveaway" if partner.id in giveaway_partner_ids else "delivered"
+                if destination.usage == "customer":
+                    own = self._is_own_customer(move.picking_id.partner_id)
+                    bucket = "giveaway" if own else "delivered"
                 elif destination.id in other_branch_ids:
                     bucket = "transferred_out"
                 elif destination.usage == "internal":
@@ -243,6 +251,44 @@ class AmwalKhuloodStockReport(models.AbstractModel):
             if bucket:
                 buckets[bucket][move.product_id.id] += quantity
         return buckets
+
+    def _forecast_quantities(self, day, warehouses):
+        """Forecast units per product for one day, added up over the branches.
+
+        Same rule as the Sales Forecast report: for a past day, the latest forecast made before
+        that day; for a coming day, the current forecast. Returns (units, products that are
+        estimates), an estimate being a product the branch sells too rarely for its own model.
+        """
+        current = self.env["alkhuloodh.sf.run"].search(
+            [("is_current", "=", True), ("state", "=", "done")], limit=1
+        )
+        if not current:
+            return {}, set()
+        domain = [
+            ("level", "=", "pair"),
+            ("metric", "=", "qty"),
+            ("date", "=", day),
+            ("warehouse_id", "in", warehouses.ids),
+            ("run_id.state", "=", "done"),
+            ("run_id.origin", "<", day),
+        ]
+        if current.origin and day > current.origin:
+            domain.append(("run_id", "=", current.id))
+        latest = {}
+        lines = self.env["alkhuloodh.sf.forecast.line"].search_fetch(
+            domain, ["run_id", "product_id", "warehouse_id", "expected", "method"]
+        )
+        for line in lines:
+            key = (line.product_id.id, line.warehouse_id.id)
+            rank = (line.run_id.origin, line.run_id.id)
+            if key not in latest or rank > latest[key][0]:
+                latest[key] = (rank, line.expected, line.method)
+        units, estimates = defaultdict(float), set()
+        for (product_id, _branch_id), (_rank, expected, method) in latest.items():
+            units[product_id] += expected
+            if method == "alloc":
+                estimates.add(product_id)
+        return units, estimates
 
     # ------------------------------------------------------------------
     # The report
@@ -260,14 +306,14 @@ class AmwalKhuloodStockReport(models.AbstractModel):
             "categories": [],
         }
 
-        all_branches = self._configured_branches()
+        all_branches = self._branches()
         if not all_branches:
             result["error"] = "no_branches"
             return result
         if warehouse_id:
             branches = all_branches.filtered(lambda w: w.id == warehouse_id)
             if not branches:
-                raise UserError(_("That branch is not part of the report setup."))
+                raise UserError(_("That branch is not one of the report branches."))
         else:
             branches = all_branches
 
@@ -275,22 +321,6 @@ class AmwalKhuloodStockReport(models.AbstractModel):
         if not locations:
             return result
         other_branch_locations = self._internal_locations(all_branches - branches)
-
-        setup = self._setup_records()
-        giveaway_locations = setup.filtered(lambda r: r.kind == "giveaway_location").mapped(
-            "location_id"
-        )
-        giveaway_partners = setup.filtered(lambda r: r.kind == "giveaway_partner").mapped(
-            "partner_id"
-        )
-        giveaway_partner_ids = set()
-        if giveaway_partners:
-            giveaway_partner_ids = set(
-                self.env["res.partner"]
-                .with_context(active_test=False)
-                .search([("id", "child_of", giveaway_partners.ids)])
-                .ids
-            )
 
         # POS: operation types of every POS (their stock moves are represented by Sold and
         # Sample), and the POS configurations that belong to the selected branches.
@@ -306,13 +336,13 @@ class AmwalKhuloodStockReport(models.AbstractModel):
         buckets = self._classify_day_moves(
             locations,
             other_branch_locations,
-            giveaway_locations,
-            giveaway_partner_ids,
             pos_types,
             pos_return_types,
             start,
             end,
         )
+
+        forecast, estimates = self._forecast_quantities(day, branches)
 
         product_ids = set(stock_now) | set(net_since_start) | set(sold) | set(sample)
         products = self.env["product.product"].with_context(active_test=False).browse(
@@ -354,6 +384,8 @@ class AmwalKhuloodStockReport(models.AbstractModel):
                 "opening": self._clean(opening),
                 "received": self._clean(received),
                 "sold": self._clean(sold_qty),
+                "forecast": self._clean(forecast.get(pid, 0.0)),
+                "estimate": pid in estimates,
                 "giveaway": self._clean(giveaway),
                 "sample": self._clean(sample_qty),
                 "returned": self._clean(returned),
