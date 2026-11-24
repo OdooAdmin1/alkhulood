@@ -1,6 +1,6 @@
 {
     "name": "Amwal Khulood Daily Stock Report",
-    "version": "19.0.2.0.0",
+    "version": "19.0.2.0.1",
     "summary": "Owner-only daily stock movement report per branch: opening, received, sold, "
     "forecast, giveaway, sample, returned and closing.",
     "description": """

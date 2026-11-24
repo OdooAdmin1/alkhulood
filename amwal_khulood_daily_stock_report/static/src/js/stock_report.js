@@ -1,6 +1,6 @@
 /** @odoo-module **/
 
-import { Component, onWillStart, useState } from "@odoo/owl";
+import { Component, onWillStart, useExternalListener, useRef, useState } from "@odoo/owl";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
 
@@ -70,12 +70,26 @@ export class AmwalKhuloodStockReport extends Component {
             branches: [],
             data: null,
             search: "",
-            category: "",
+            categories: [],
+            categoryOpen: false,
             uom: "",
             showTotals: false,
             onlyMovement: false,
             sortKey: "name",
             sortDir: 1,
+        });
+        // the category list closes when you click anywhere else or press Escape
+        this.categoryMenu = useRef("categoryMenu");
+        useExternalListener(window, "click", (ev) => {
+            const menu = this.categoryMenu.el;
+            if (this.state.categoryOpen && menu && !menu.contains(ev.target)) {
+                this.state.categoryOpen = false;
+            }
+        });
+        useExternalListener(window, "keydown", (ev) => {
+            if (ev.key === "Escape") {
+                this.state.categoryOpen = false;
+            }
         });
         onWillStart(async () => {
             await this.loadBranches();
@@ -114,9 +128,7 @@ export class AmwalKhuloodStockReport extends Component {
                 return; // a newer request is already running
             }
             this.state.data = data;
-            if (this.state.category && !data.categories.includes(this.state.category)) {
-                this.state.category = "";
-            }
+            this.state.categories = this.state.categories.filter((name) => data.categories.includes(name));
             if (this.state.uom && !data.rows.some((row) => row.uom === this.state.uom)) {
                 this.state.uom = "";
             }
@@ -170,6 +182,14 @@ export class AmwalKhuloodStockReport extends Component {
         return (this.state.data && this.state.data.categories) || [];
     }
 
+    get categoryLabel() {
+        const chosen = this.state.categories;
+        if (!chosen.length) {
+            return "All categories";
+        }
+        return chosen.length === 1 ? chosen[0] : chosen.length + " categories";
+    }
+
     get uoms() {
         const data = this.state.data;
         return data ? [...new Set(data.rows.map((row) => row.uom))].sort() : [];
@@ -190,7 +210,7 @@ export class AmwalKhuloodStockReport extends Component {
 
         const query = this.state.search.trim().toLowerCase();
         const rows = data.rows.filter((row) => {
-            if (this.state.category && row.category !== this.state.category) {
+            if (this.state.categories.length && !this.state.categories.includes(row.category)) {
                 return false;
             }
             if (this.state.uom && row.uom !== this.state.uom) {
@@ -315,8 +335,17 @@ export class AmwalKhuloodStockReport extends Component {
         this.state.search = ev.target.value;
     }
 
-    onCategory(ev) {
-        this.state.category = ev.target.value;
+    toggleCategoryMenu() {
+        this.state.categoryOpen = !this.state.categoryOpen;
+    }
+
+    toggleCategory(name) {
+        const chosen = this.state.categories;
+        this.state.categories = chosen.includes(name) ? chosen.filter((c) => c !== name) : [...chosen, name];
+    }
+
+    clearCategories() {
+        this.state.categories = [];
     }
 
     onUom(ev) {

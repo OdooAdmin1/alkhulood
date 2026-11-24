@@ -45,13 +45,23 @@
                         <input type="search" class="amw-input" placeholder="Search product or code"
                                aria-label="Search product or code"
                                t-att-value="state.search" t-on-input="onSearch"/>
-                        <select class="amw-input" aria-label="Product category" t-on-change="onCategory">
-                            <option value="">All categories</option>
-                            <t t-foreach="categories" t-as="category" t-key="category">
-                                <option t-att-value="category" t-att-selected="state.category === category"
-                                        t-esc="category"/>
-                            </t>
-                        </select>
+                        <div class="amw-multi" t-ref="categoryMenu">
+                            <button type="button" class="amw-input amw-multi-button" aria-haspopup="true"
+                                    t-att-aria-expanded="state.categoryOpen ? 'true' : 'false'"
+                                    t-on-click="toggleCategoryMenu">
+                                <span t-esc="categoryLabel"/>
+                                <i class="fa fa-caret-down"/>
+                            </button>
+                            <div t-if="state.categoryOpen" class="amw-multi-panel" role="group" aria-label="Product categories">
+                                <label t-foreach="categories" t-as="category" t-key="category" class="amw-multi-option">
+                                    <input type="checkbox" t-att-checked="state.categories.includes(category)"
+                                           t-on-change="() => this.toggleCategory(category)"/>
+                                    <span t-esc="category"/>
+                                </label>
+                                <button type="button" class="amw-multi-clear" t-if="state.categories.length"
+                                        t-on-click="clearCategories">Clear selection</button>
+                            </div>
+                        </div>
                         <select class="amw-input" aria-label="Unit of measure" t-on-change="onUom">
                             <option value="">All units</option>
                             <t t-foreach="uoms" t-as="uom" t-key="uom">

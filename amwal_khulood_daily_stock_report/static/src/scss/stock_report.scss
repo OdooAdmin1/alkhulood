@@ -160,6 +160,60 @@
         max-width: 100%;
     }
 
+    // Category picker: several categories can be ticked at once
+    .amw-multi {
+        position: relative;
+    }
+
+    .amw-multi-button {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        text-align: left;
+        cursor: pointer;
+    }
+
+    .amw-multi-panel {
+        position: absolute;
+        top: calc(100% + 4px);
+        left: 0;
+        z-index: 20;
+        min-width: 240px;
+        max-height: 320px;
+        overflow: auto;
+        padding: 6px;
+        background: #ffffff;
+        border: 1px solid #b9bfc7;
+        border-radius: 4px;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+    }
+
+    .amw-multi-option {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 0;
+        padding: 6px 8px;
+        color: #1a1c1f;
+        font-size: 0.9rem;
+        cursor: pointer;
+
+        &:hover {
+            background: var(--amw-saffron-soft);
+        }
+    }
+
+    .amw-multi-clear {
+        margin-top: 4px;
+        padding: 6px 8px;
+        background: none;
+        border: 0;
+        color: var(--amw-ink);
+        text-decoration: underline;
+        cursor: pointer;
+    }
+
     // The open list of a dropdown must stay readable in Odoo's dark theme too.
     select.amw-input option {
         background: #ffffff;
@@ -177,6 +231,8 @@
 
     .amw-btn:focus-visible,
     .amw-chip:focus-visible,
+    .amw-multi-button:focus-visible,
+    .amw-multi-clear:focus-visible,
     .amw-date:focus-visible,
     .amw-input:focus-visible,
     .amw-check input:focus-visible,
