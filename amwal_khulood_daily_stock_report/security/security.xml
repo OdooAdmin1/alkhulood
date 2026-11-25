@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="group_amwal_stock_report_owner" model="res.groups">
+        <field name="name">Daily Stock Report: Owner</field>
+        <field name="comment">Can open the Daily Stock Report dashboard. Assign to the owner's user only.</field>
+    </record>
+</odoo>
