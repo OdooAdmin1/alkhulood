@@ -54,7 +54,7 @@ class AmwalKhuloodStockReport(models.AbstractModel):
       Opening + Received - Sold - Giveaway - Sample - Returned - Transferred out
       - Delivered + Other = Closing always holds.
 
-    The branch stock is read from stock.quant / stock.move because on this
+    The branch stock is read from stock.quant / stock.move.line because on this
     instance the `location` context key is not honoured by `qty_available`.
     """
 
@@ -171,16 +171,21 @@ class AmwalKhuloodStockReport(models.AbstractModel):
         return result
 
     def _net_since(self, locations, since):
-        """Net quantity (in - out) that crossed the branch boundary in done moves from `since`."""
+        """Net quantity (in - out) that crossed the branch boundary in done moves from `since`.
+
+        Read from the move lines, which hold the location the stock really went to. The header
+        of a transfer can name the top-level location of a warehouse (for example Jid Ali's
+        "JB"), while the stock lands in its stock location.
+        """
         loc_ids = set(locations.ids)
         domain = [("state", "=", "done"), ("date", ">=", since)] + self._boundary_domain(
             list(loc_ids)
         )
         result = defaultdict(float)
-        groups = self.env["stock.move"]._read_group(
+        groups = self.env["stock.move.line"]._read_group(
             domain,
             ["product_id", "location_id", "location_dest_id"],
-            ["product_qty:sum"],
+            ["quantity_product_uom:sum"],
         )
         for product, _source, destination, quantity in groups:
             result[product.id] += quantity if destination.id in loc_ids else -quantity
@@ -217,8 +222,9 @@ class AmwalKhuloodStockReport(models.AbstractModel):
     ):
         """Classify the day's non-POS moves into report columns.
 
-        Moves that are not classified here (inventory adjustments, scrap, customer
-        returns outside POS ...) simply fall into the "Other" column.
+        Works on move lines (see _net_since). Moves that are not classified here (inventory
+        adjustments, scrap, customer returns outside POS ...) simply fall into the "Other"
+        column.
         """
         loc_ids = set(locations.ids)
         other_branch_ids = set(other_branch_locations.ids)
@@ -227,29 +233,31 @@ class AmwalKhuloodStockReport(models.AbstractModel):
             ("state", "=", "done"),
             ("date", ">=", start),
             ("date", "<", end),
-            ("picking_type_id", "not in", pos_types.ids),
+            "|",
+            ("move_id.picking_type_id", "=", False),
+            ("move_id.picking_type_id", "not in", pos_types.ids),
         ] + self._boundary_domain(list(loc_ids))
-        for move in self.env["stock.move"].search(domain):
-            source, destination = move.location_id, move.location_dest_id
-            quantity = move.product_qty
+        for line in self.env["stock.move.line"].search(domain):
+            source, destination = line.location_id, line.location_dest_id
+            quantity = line.quantity_product_uom
             bucket = None
             if destination.id in loc_ids:
                 # Stock coming into the branch.
-                if move.picking_type_id in pos_return_types and source.usage == "customer":
+                if line.move_id.picking_type_id in pos_return_types and source.usage == "customer":
                     continue  # a POS refund; it is already netted off in Sold
                 if source.usage in ("internal", "supplier", "production", "transit"):
                     bucket = "received"
             else:
                 # Stock leaving the branch.
                 if destination.usage == "customer":
-                    own = self._is_own_customer(move.picking_id.partner_id)
+                    own = self._is_own_customer(line.picking_id.partner_id)
                     bucket = "giveaway" if own else "delivered"
                 elif destination.id in other_branch_ids:
                     bucket = "transferred_out"
                 elif destination.usage == "internal":
                     bucket = "returned"
             if bucket:
-                buckets[bucket][move.product_id.id] += quantity
+                buckets[bucket][line.product_id.id] += quantity
         return buckets
 
     def _forecast_quantities(self, day, warehouses):
